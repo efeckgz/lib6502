@@ -109,7 +109,11 @@ impl<M: Memory + 'static> CPU<M> {
             }
             AddressingMode::ZeroPageX => {
                 let lo = self.read_and_inc_pc();
-                (lo + self.x) as u16 // Take another look
+                ((lo + self.x) % 256) as u16 // modulo 256 for wrapping around if the result exceeds 8 bits.
+            }
+            AddressingMode::ZeroPageY => {
+                let lo = self.read_and_inc_pc();
+                ((lo + self.y) % 256) as u16 // modulo 256 for wrapping around if the result exceeds 8 bits.
             }
 
             _ => panic!("Unrecognized addressing mode!"),
