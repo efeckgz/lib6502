@@ -23,7 +23,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
+    fn adc_works() {
         let memory = Mem { bytes: [0; 4096] };
         let mut cpu = CPU::new(memory);
 

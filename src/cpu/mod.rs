@@ -184,12 +184,13 @@ impl<M: Memory + 'static> CPU<M> {
     pub fn adc(&mut self, operand: u16) {
         let a = self.a;
         let to_add = self.memory.read(operand);
+        let cin = (self.flag >> CARRY) | 1;
         let (result, did_overflow) = a.overflowing_add(to_add);
         self.a = result;
 
         self.raise_flag(CARRY, did_overflow);
         self.raise_flag(ZERO, self.a == 0);
-        // set overflow flag
+        self.raise_flag(OVERFLOW, (self.a ^ result) & (to_add ^ result) & 0x80 != 0);
         self.raise_flag(NEGATIVE, (self.a as i8) < 0);
     }
 }
