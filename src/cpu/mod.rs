@@ -76,8 +76,7 @@ impl<M: Memory + 'static> CPU<M> {
     }
 
     pub fn fetch(&mut self) -> u8 {
-        let opcode = self.memory.read(self.pc);
-        self.pc += 1;
+        let opcode = self.read_and_inc_pc();
         opcode
     }
 
