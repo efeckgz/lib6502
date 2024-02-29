@@ -49,6 +49,14 @@ impl<M: Memory + 'static> CPU<M> {
         }
     }
 
+    pub fn load_program(&mut self, program: Vec<u8>) {
+        let mut start = 0x10;
+        for byte in program {
+            self.memory.write(start, byte);
+            start += 0x01;
+        }
+    }
+
     // flag_raised returns the raised status of the given flag.
     pub fn flag_raised(&self, flag: u8) -> bool {
         ((self.flag >> flag) & 1) == 1
@@ -85,7 +93,7 @@ impl<M: Memory + 'static> CPU<M> {
             0x61 => (CPU::adc, AddressingMode::IndirectX),
             0x71 => (CPU::adc, AddressingMode::IndirectY),
 
-            _ => todo!("Unimplemented opcode: {opcode}"),
+            _ => todo!("opcode {opcode}"),
         }
     }
 
@@ -164,11 +172,13 @@ impl<M: Memory + 'static> CPU<M> {
         }
     }
 
-    pub fn run_for(&mut self, cycles: i32) {
-        let opcode = self.fetch();
-        let (executer, mode) = self.decode(opcode);
-        for _ in 0..=cycles {
+    pub fn run_for(&mut self, instructions: i32) {
+        let mut executed = 0;
+        while executed < instructions {
+            let opcode = self.fetch();
+            let (executer, mode) = self.decode(opcode);
             self.execute(executer, mode);
+            executed += 1;
         }
     }
 
