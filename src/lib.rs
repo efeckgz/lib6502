@@ -19,8 +19,6 @@ impl Memory for Mem {
 
 #[cfg(test)]
 mod tests {
-    use std::mem;
-
     use self::cpu::CPU;
     use super::*;
 
