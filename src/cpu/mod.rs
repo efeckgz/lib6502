@@ -1,5 +1,6 @@
 use crate::memory::{self, Memory};
 
+#[derive(Clone, Copy)]
 pub enum AddressingMode {
     Accumulator,
     Immediate,
@@ -25,7 +26,7 @@ const NEGATIVE: u8 = 7;
 type InstructionExecuter<M: Memory> = fn(&mut CPU<M>, u16);
 
 pub struct CPU<M: Memory> {
-    a: u8,
+    pub a: u8,
     x: u8,
     y: u8,
     pub pc: u16,
@@ -41,7 +42,7 @@ impl<M: Memory + 'static> CPU<M> {
             a: 0,
             x: 0,
             y: 0,
-            pc: 0,
+            pc: 0x10,
             sp: 0,
             flag: 0,
             memory,
@@ -74,6 +75,7 @@ impl<M: Memory + 'static> CPU<M> {
 
     pub fn decode(&self, opcode: u8) -> (InstructionExecuter<M>, AddressingMode) {
         match opcode {
+            // ADC
             0x69 => (CPU::adc, AddressingMode::Immediate),
             0x65 => (CPU::adc, AddressingMode::ZeroPage),
             0x75 => (CPU::adc, AddressingMode::ZeroPageX),
@@ -162,6 +164,14 @@ impl<M: Memory + 'static> CPU<M> {
         }
     }
 
+    pub fn run_for(&mut self, cycles: i32) {
+        let opcode = self.fetch();
+        let (executer, mode) = self.decode(opcode);
+        for _ in 0..=cycles {
+            self.execute(executer, mode);
+        }
+    }
+
     pub fn adc(&mut self, operand: u16) {
         let a = self.a;
         let to_add = self.memory.read(operand);
@@ -169,6 +179,8 @@ impl<M: Memory + 'static> CPU<M> {
         self.a = result;
 
         self.raise_flag(CARRY, did_overflow);
-        self.raise_flag(NEGATIVE, result < 0)
+        self.raise_flag(ZERO, self.a == 0);
+        // set overflow flag
+        self.raise_flag(NEGATIVE, (self.a as i8) < 0);
     }
 }
