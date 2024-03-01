@@ -23,7 +23,7 @@ const DECIMAL: u8 = 3;
 const OVERFLOW: u8 = 6;
 const NEGATIVE: u8 = 7;
 
-type InstructionExecuter<M: Memory> = fn(&mut CPU<M>, u16);
+type InstructionExecuter<M> = fn(&mut CPU<M>, u16);
 
 pub struct CPU<M: Memory> {
     pub a: u8,
@@ -185,7 +185,7 @@ impl<M: Memory + 'static> CPU<M> {
         let a = self.a;
         let to_add = self.memory.read(operand);
         let cin = (self.flag >> CARRY) | 1;
-        let (result, did_overflow) = a.overflowing_add(to_add);
+        let (result, did_overflow) = a.overflowing_add(to_add + cin); // potential overflow when adding cin.
         self.a = result;
 
         self.raise_flag(CARRY, did_overflow);
