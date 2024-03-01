@@ -59,7 +59,7 @@ impl<M: Memory + 'static> CPU<M> {
 
     // flag_raised returns the raised status of the given flag.
     pub fn flag_raised(&self, flag: u8) -> bool {
-        ((self.flag >> flag) & 1) == 1
+        (self.flag & (1 << flag)) != 0
     }
 
     // raise_flag raises the given flag if the given condition is satisfied.
@@ -184,7 +184,7 @@ impl<M: Memory + 'static> CPU<M> {
     pub fn adc(&mut self, operand: u16) {
         let a = self.a;
         let to_add = self.memory.read(operand);
-        let cin = if self.flag & (1 << CARRY) != 0 { 1 } else { 0 };
+        let cin = if self.flag_raised(CARRY) { 1 } else { 0 };
         let (partial_result, carry1) = a.overflowing_add(to_add);
         let (result, carry2) = partial_result.overflowing_add(cin);
 
