@@ -39,6 +39,7 @@ mod tests {
         assert!(cpu.flag_raised(0)); // Test if the carry flag is set correct
     }
 
+    #[test]
     fn and_works() {
         let memory = Mem { bytes: [0; 4096] };
         let mut cpu = CPU::new(memory);
@@ -49,6 +50,8 @@ mod tests {
         let test_val: u8 = 0x01; // we will and accumulator with this value.
 
         let program = vec![0x69, test_a, 0x29, test_val];
+        cpu.load_program(program);
+
         cpu.run_for(2);
         assert_eq!(cpu.a, test_a & test_val);
     }
