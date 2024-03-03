@@ -92,6 +92,16 @@ impl<M: Memory + 'static> CPU<M> {
             0x61 => (CPU::adc, AddressingMode::IndirectX),
             0x71 => (CPU::adc, AddressingMode::IndirectY),
 
+            // AND
+            0x29 => (CPU::and, AddressingMode::Immediate),
+            0x25 => (CPU::and, AddressingMode::ZeroPage),
+            0x35 => (CPU::and, AddressingMode::ZeroPageX),
+            0x2D => (CPU::and, AddressingMode::Absolute),
+            0x3D => (CPU::and, AddressingMode::AbsoluteX),
+            0x39 => (CPU::and, AddressingMode::AbsoluteY),
+            0x21 => (CPU::and, AddressingMode::IndirectX),
+            0x31 => (CPU::and, AddressingMode::IndirectY),
+
             _ => todo!("opcode {opcode}"),
         }
     }
@@ -197,5 +207,9 @@ impl<M: Memory + 'static> CPU<M> {
             ((self.a ^ result) & (to_add ^ result) & 0x80) != 0,
         );
         self.raise_flag(NEGATIVE, (self.a as i8) < 0);
+    }
+
+    fn and(&mut self, operand: u16) {
+        unimplemented!()
     }
 }
