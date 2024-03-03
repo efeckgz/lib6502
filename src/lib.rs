@@ -25,7 +25,7 @@ mod tests {
     #[test]
     fn adc_works() {
         let memory = Mem { bytes: [0; 4096] };
-        let mut cpu = CPU::new(memory);
+        let mut cpu = CPU::new(memory, 0x600);
 
         let add_1: u8 = 0xFA;
         let add_2: u8 = 0x18;

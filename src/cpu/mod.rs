@@ -37,12 +37,12 @@ pub struct CPU<M: Memory> {
 }
 
 impl<M: Memory + 'static> CPU<M> {
-    pub fn new(memory: M) -> Self {
+    pub fn new(memory: M, pc: u16) -> Self {
         Self {
             a: 0,
             x: 0,
             y: 0,
-            pc: 0x10,
+            pc,
             sp: 0,
             flag: 0,
             memory,
@@ -50,7 +50,7 @@ impl<M: Memory + 'static> CPU<M> {
     }
 
     pub fn load_program(&mut self, program: Vec<u8>) {
-        let mut start = 0x10;
+        let mut start = self.pc;
         for byte in program {
             self.memory.write(start, byte);
             start += 0x01;
@@ -63,9 +63,11 @@ impl<M: Memory + 'static> CPU<M> {
     }
 
     // raise_flag raises the given flag if the given condition is satisfied.
-    fn raise_flag(&mut self, flag: u8, condition: bool) {
+    fn set_flag(&mut self, flag: u8, condition: bool) {
         if condition {
-            self.flag = self.flag | (1 << flag);
+            self.flag |= 1 << flag;
+        } else {
+            self.flag ^= 1 << flag;
         }
     }
 
@@ -200,13 +202,13 @@ impl<M: Memory + 'static> CPU<M> {
 
         self.a = result;
 
-        self.raise_flag(CARRY, carry1 || carry2);
-        self.raise_flag(ZERO, self.a == 0);
-        self.raise_flag(
+        self.set_flag(CARRY, carry1 || carry2);
+        self.set_flag(ZERO, self.a == 0);
+        self.set_flag(
             OVERFLOW,
             ((self.a ^ result) & (to_add ^ result) & 0x80) != 0,
         );
-        self.raise_flag(NEGATIVE, (self.a as i8) < 0);
+        self.set_flag(NEGATIVE, (self.a as i8) < 0);
     }
 
     fn and(&mut self, operand: u16) {
@@ -215,7 +217,7 @@ impl<M: Memory + 'static> CPU<M> {
         let result = val & a;
         self.a = result;
 
-        self.raise_flag(NEGATIVE, (result as i8) < 0);
-        self.raise_flag(ZERO, result == 0);
+        self.set_flag(NEGATIVE, (result as i8) < 0);
+        self.set_flag(ZERO, result == 0);
     }
 }
