@@ -42,7 +42,7 @@ mod tests {
     #[test]
     fn and_works() {
         let memory = Mem { bytes: [0; 4096] };
-        let mut cpu = CPU::new(memory);
+        let mut cpu = CPU::new(memory, 0x600);
 
         // A test value to load to the a register.
         // Since lda is not implemented we will add this number to A when A is 0.
