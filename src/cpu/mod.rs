@@ -210,6 +210,12 @@ impl<M: Memory + 'static> CPU<M> {
     }
 
     fn and(&mut self, operand: u16) {
-        unimplemented!()
+        let val = self.memory.read(operand);
+        let a = self.a;
+        let result = val & a;
+        self.a = result;
+
+        self.raise_flag(NEGATIVE, (result as i8) < 0);
+        self.raise_flag(ZERO, result == 0);
     }
 }
