@@ -31,7 +31,11 @@ mod tests {
         let memory = Mem { bytes: [0; 4096] };
         let mut cpu = CPU::new(memory);
 
-        let tests = vec![(0x69_u8, 0xFF_u8, 0x18_u8), (0x69_u8, 0x1A_u8, 0xBD_u8)];
+        let tests = vec![
+            (0x69_u8, 0xFF_u8, 0x18_u8),
+            (0x69_u8, 0x1A_u8, 0xBD_u8),
+            (0x69_u8, 0xFF_u8, 0x01_u8),
+        ];
 
         let mut test_index = 1;
         for (opcode, add_1, add_2) in tests {
@@ -46,18 +50,6 @@ mod tests {
             println!("Test {test_index} passed.");
             test_index += 1;
         }
-
-        // let add_1: u8 = 0xFF;
-        // let add_2: u8 = 0x18;
-        // let (result, did_overflow) = add_1.overflowing_add(add_2);
-
-        // let program = vec![0x69, add_1, 0x69, add_2];
-        // let inst_count = (program.len() / 2) as i32;
-        // cpu.load_program(program);
-
-        // cpu.run_for(inst_count);
-        // assert_eq!(cpu.a, result); // Test if the result is correct
-        // assert!(cpu.flag_raised(0) == did_overflow); // Test if the carry flag is set correct
     }
 
     #[test]

@@ -73,7 +73,12 @@ impl<M: Memory + 'static> CPU<M> {
 
     pub fn reset(&mut self) {
         self.memory.reset();
+        self.a = 0;
+        self.x = 0;
+        self.y = 0;
         self.pc = 0x600;
+        self.sp = 0;
+        self.flag = 0;
     }
 
     fn read_and_inc_pc(&mut self) -> u8 {
