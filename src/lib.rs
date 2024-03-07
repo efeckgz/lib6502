@@ -46,7 +46,7 @@ mod tests {
             cpu.run_for(2);
 
             assert_eq!(cpu.a, result);
-            assert!(cpu.flag_raised(0) == did_overflow);
+            assert!(cpu.flag_raised(cpu::CARRY) == did_overflow);
             println!("Test {test_index} passed.");
             test_index += 1;
         }

@@ -16,12 +16,12 @@ pub enum AddressingMode {
     IndirectY,
 }
 
-const CARRY: u8 = 0;
-const ZERO: u8 = 1;
-const INTERRUPT_DISABLE: u8 = 2;
-const DECIMAL: u8 = 3;
-const OVERFLOW: u8 = 6;
-const NEGATIVE: u8 = 7;
+pub const CARRY: u8 = 0;
+pub const ZERO: u8 = 1;
+pub const INTERRUPT_DISABLE: u8 = 2;
+pub const DECIMAL: u8 = 3;
+pub const OVERFLOW: u8 = 6;
+pub const NEGATIVE: u8 = 7;
 
 type InstructionExecuter<M> = fn(&mut CPU<M>, u16);
 
@@ -206,10 +206,7 @@ impl<M: Memory + 'static> CPU<M> {
     pub fn adc(&mut self, operand: u16) {
         let a = self.a;
         let to_add = self.memory.read(operand);
-        // let cin = if self.flag_raised(CARRY) { 1 } else { 0 };
-        // println!("carry in: {cin}");
-        // let (partial_result, carry1) = a.overflowing_add(to_add);
-        // let (result, carry2) = partial_result.overflowing_add(cin);
+
         let (mut result, mut did_overflow) = a.overflowing_add(to_add);
         if self.flag_raised(CARRY) {
             (result, did_overflow) = result.overflowing_add(1); // if the carry flag is set add it.
