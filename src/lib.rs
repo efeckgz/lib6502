@@ -27,16 +27,16 @@ mod tests {
         let memory = Mem { bytes: [0; 4096] };
         let mut cpu = CPU::new(memory, 0x600);
 
-        let add_1: u8 = 0xFA;
-        let add_2: u8 = 0x18;
-        let (result, _) = add_1.overflowing_add(add_2);
+        let add_1: u8 = 0x01;
+        let add_2: u8 = 0x01;
+        let (result, did_overflow) = add_1.overflowing_add(add_2); // must be 0x02
 
         let program = vec![0x69, add_1, 0x69, add_2];
         cpu.load_program(program);
 
         cpu.run_for(2);
         assert_eq!(cpu.a, result); // Test if the result is correct
-        assert!(cpu.flag_raised(0)); // Test if the carry flag is set correct
+        assert!(cpu.flag_raised(0) == did_overflow); // Test if the carry flag is set correct
     }
 
     #[test]

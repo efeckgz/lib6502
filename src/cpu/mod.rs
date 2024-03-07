@@ -65,9 +65,7 @@ impl<M: Memory + 'static> CPU<M> {
     // raise_flag raises the given flag if the given condition is satisfied.
     fn set_flag(&mut self, flag: u8, condition: bool) {
         if condition {
-            self.flag |= 1 << flag;
-        } else {
-            self.flag ^= 1 << flag;
+            self.flag |= (1 << flag);
         }
     }
 
@@ -196,13 +194,18 @@ impl<M: Memory + 'static> CPU<M> {
     pub fn adc(&mut self, operand: u16) {
         let a = self.a;
         let to_add = self.memory.read(operand);
-        let cin = if self.flag_raised(CARRY) { 1 } else { 0 };
-        let (partial_result, carry1) = a.overflowing_add(to_add);
-        let (result, carry2) = partial_result.overflowing_add(cin);
+        // let cin = if self.flag_raised(CARRY) { 1 } else { 0 };
+        // println!("carry in: {cin}");
+        // let (partial_result, carry1) = a.overflowing_add(to_add);
+        // let (result, carry2) = partial_result.overflowing_add(cin);
+        let (mut result, mut did_overflow) = a.overflowing_add(to_add);
+        if self.flag_raised(CARRY) {
+            (result, did_overflow) = result.overflowing_add(1);
+        }
 
         self.a = result;
 
-        self.set_flag(CARRY, carry1 || carry2);
+        self.set_flag(CARRY, did_overflow);
         self.set_flag(ZERO, self.a == 0);
         self.set_flag(
             OVERFLOW,
