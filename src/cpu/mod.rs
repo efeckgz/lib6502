@@ -37,12 +37,12 @@ pub struct CPU<M: Memory> {
 }
 
 impl<M: Memory + 'static> CPU<M> {
-    pub fn new(memory: M, pc: u16) -> Self {
+    pub fn new(memory: M) -> Self {
         Self {
             a: 0,
             x: 0,
             y: 0,
-            pc,
+            pc: 0x600,
             sp: 0,
             flag: 0,
             memory,
@@ -62,11 +62,18 @@ impl<M: Memory + 'static> CPU<M> {
         (self.flag & (1 << flag)) != 0
     }
 
-    // raise_flag raises the given flag if the given condition is satisfied.
+    // set_flag sets or clears the given flag according to the condition.
     fn set_flag(&mut self, flag: u8, condition: bool) {
         if condition {
-            self.flag |= 1 << flag;
+            self.flag |= 1 << flag; // set the flag
+        } else {
+            self.flag &= !(1 << flag); // clear the flag
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.memory.reset();
+        self.pc = 0x600;
     }
 
     fn read_and_inc_pc(&mut self) -> u8 {
@@ -200,7 +207,7 @@ impl<M: Memory + 'static> CPU<M> {
         // let (result, carry2) = partial_result.overflowing_add(cin);
         let (mut result, mut did_overflow) = a.overflowing_add(to_add);
         if self.flag_raised(CARRY) {
-            (result, did_overflow) = result.overflowing_add(1);
+            (result, did_overflow) = result.overflowing_add(1); // if the carry flag is set add it.
         }
 
         self.a = result;
