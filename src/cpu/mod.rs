@@ -65,7 +65,7 @@ impl<M: Memory + 'static> CPU<M> {
     // raise_flag raises the given flag if the given condition is satisfied.
     fn set_flag(&mut self, flag: u8, condition: bool) {
         if condition {
-            self.flag |= (1 << flag);
+            self.flag |= 1 << flag;
         }
     }
 
