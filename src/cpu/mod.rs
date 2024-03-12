@@ -1,4 +1,4 @@
-use crate::memory::{self, Memory};
+use crate::memory::Memory;
 
 #[derive(Clone)]
 pub enum AddressingMode {
@@ -49,10 +49,10 @@ impl<M: Memory + 'static> CPU<M> {
         }
     }
 
-    pub fn load_program(&mut self, program: Vec<u8>) {
+    pub fn load_program(&mut self, program: &[u8]) {
         let mut start = self.pc;
         for byte in program {
-            self.memory.write(start, byte);
+            self.memory.write(start, *byte);
             start += 0x01;
         }
     }
@@ -114,7 +114,7 @@ impl<M: Memory + 'static> CPU<M> {
             0x21 => (CPU::and, AddressingMode::IndirectX),
             0x31 => (CPU::and, AddressingMode::IndirectY),
 
-            _ => todo!("opcode {opcode}"),
+            _ => todo!("opcode {opcode}, pc {0}", self.pc),
         }
     }
 
@@ -188,8 +188,6 @@ impl<M: Memory + 'static> CPU<M> {
                 let plus_y = zero_page_addr + self.y as u16;
                 Some(plus_y)
             }
-
-            _ => panic!("Unrecognized addressing mode!"),
         }
     }
 

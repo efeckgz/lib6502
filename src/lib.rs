@@ -1,7 +1,7 @@
 use memory::Memory;
 
-mod cpu;
-mod memory;
+pub mod cpu;
+pub mod memory;
 
 struct Mem {
     pub bytes: [u8; 4096],
@@ -41,8 +41,9 @@ mod tests {
         for (opcode, add_1, add_2) in tests {
             cpu.reset();
             let (result, did_overflow) = add_1.overflowing_add(add_2);
-            let program = vec![opcode, add_1, opcode, add_2];
-            cpu.load_program(program);
+            // let program = vec![opcode, add_1, opcode, add_2];
+            let program: [u8; 4] = [opcode, add_1, opcode, add_2];
+            cpu.load_program(&program);
             cpu.run_for(2);
 
             assert_eq!(cpu.a, result);
@@ -50,6 +51,28 @@ mod tests {
             println!("Test {test_index} passed.");
             test_index += 1;
         }
+    }
+
+    #[test]
+    fn abs_adc_works() {
+        let memory = Mem { bytes: [0; 4096] };
+        let mut cpu = CPU::new(memory);
+
+        let lo = 0x06;
+        let hi = 0x02;
+        let addr: u16 = (hi << 8) | lo;
+        println!("addr: {addr}");
+
+        let mut program: [u8; 2048] = [0; 2048]; // 2k bytes of 0.
+        program[0x600] = 0x6D; // Absolute addressing adc instruction
+        program[0x601] = 0x06;
+        program[0x602] = 0x02;
+        program[addr as usize] = 0x19; // load the value to add into the calculated address
+
+        cpu.load_program(&program);
+
+        cpu.run_for(1);
+        assert_eq!(cpu.a, 0x19);
     }
 
     #[test]
@@ -62,8 +85,9 @@ mod tests {
         let test_a: u8 = 0x15;
         let test_val: u8 = 0x01; // we will and accumulator with this value.
 
-        let program = vec![0x69, test_a, 0x29, test_val];
-        cpu.load_program(program);
+        // let program = vec![0x69, test_a, 0x29, test_val];
+        let program: [u8; 4] = [0x69, test_a, 0x29, test_val];
+        cpu.load_program(&program);
 
         cpu.run_for(2);
         assert_eq!(cpu.a, test_a & test_val);
