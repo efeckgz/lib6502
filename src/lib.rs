@@ -61,12 +61,12 @@ mod tests {
         let lo = 0x06;
         let hi = 0x02;
         let addr: u16 = (hi << 8) | lo;
-        println!("addr: {addr}");
+        println!("addr: {addr:#04x}");
 
         let mut program: [u8; 2048] = [0; 2048]; // 2k bytes of 0.
-        program[0x600] = 0x6D; // Absolute addressing adc instruction
-        program[0x601] = 0x06;
-        program[0x602] = 0x02;
+        program[0x600] = 0x6D_u8; // Absolute addressing adc instruction
+        program[0x601] = 0x06_u8;
+        program[0x602] = 0x02_u8;
         program[addr as usize] = 0x19; // load the value to add into the calculated address
 
         cpu.load_program(&program);

@@ -1,20 +1,7 @@
-use crate::memory::Memory;
+pub mod addressing_modes;
 
-#[derive(Clone)]
-pub enum AddressingMode {
-    Accumulator,
-    Immediate,
-    Implied,
-    Relative,
-    Absolute,
-    ZeroPage,
-    AbsoluteX,
-    AbsoluteY,
-    ZeroPageX,
-    ZeroPageY,
-    IndirectX,
-    IndirectY,
-}
+use crate::memory::Memory;
+use addressing_modes::AddressingMode;
 
 pub const CARRY: u8 = 0;
 pub const ZERO: u8 = 1;
@@ -50,10 +37,9 @@ impl<M: Memory + 'static> CPU<M> {
     }
 
     pub fn load_program(&mut self, program: &[u8]) {
-        let mut start = self.pc;
-        for byte in program {
-            self.memory.write(start, *byte);
-            start += 0x01;
+        for (offset, &byte) in program.iter().enumerate() {
+            let address = self.pc + offset as u16;
+            self.memory.write(address, byte);
         }
     }
 
@@ -114,16 +100,18 @@ impl<M: Memory + 'static> CPU<M> {
             0x21 => (CPU::and, AddressingMode::IndirectX),
             0x31 => (CPU::and, AddressingMode::IndirectY),
 
-            _ => todo!("opcode {opcode}, pc {0}", self.pc),
+            _ => todo!("opcode {opcode:#04x}, pc {0:#04x}", self.pc),
         }
     }
 
     pub fn execute(&mut self, operation: InstructionExecuter<M>, mode: AddressingMode) {
         let operand = self.decode_operand(mode);
+        println!("PC after decode: {0:#04x}", self.pc);
         operation(self, operand.unwrap()); // Unwrap is safe to use here because in cases where operand is None there is no need for it anyway.
     }
 
     pub fn decode_operand(&mut self, mode: AddressingMode) -> Option<u16> {
+        println!("PC before decode: {0:#04x}", self.pc);
         match mode {
             AddressingMode::Accumulator => Some(self.a as u16),
             AddressingMode::Immediate => {
