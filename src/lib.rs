@@ -58,17 +58,16 @@ mod tests {
         let memory = Mem { bytes: [0; 4096] };
         let mut cpu = CPU::new(memory);
 
-        let lo = 0x03_u8;
-        let hi = 0x00_u8;
-        let addr: u16 = ((hi as u16) << 8) | (lo as u16);
+        let lo = 0x10_u8;
+        let hi = 0x06_u8;
+        let addr: u16 = ((hi as u16) << 8) | (lo as u16); // should be 0x610
         println!("addr: {addr:#04x}");
 
         let mut program: [u8; 2048] = [0; 2048]; // 2k bytes of 0.
         program[0] = 0x6D_u8; // Absolute addressing adc instruction
-        program[1] = 0x06_u8;
-        program[2] = 0x02_u8;
-        program[3] = 0x19_u8;
-        // program[addr as usize] = 0x19; // load the value to add into the calculated address
+        program[1] = lo;
+        program[2] = hi;
+        program[0x10] = 0x19_u8; // memory address 0x610 will have the value 0x19
 
         cpu.load_program(&program);
 

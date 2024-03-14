@@ -125,6 +125,8 @@ impl<M: Memory + 'static> CPU<M> {
     pub fn adc(&mut self, operand: u16) {
         let a = self.a;
         let to_add = self.memory.read(operand);
+        println!("operand: {operand:#04x}");
+        println!("to add: {to_add:#04x}");
 
         let (mut result, mut did_overflow) = a.overflowing_add(to_add);
         if self.flag_raised(FlagBitPos::Carry) {
