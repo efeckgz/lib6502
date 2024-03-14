@@ -47,7 +47,7 @@ mod tests {
             cpu.run_for(2);
 
             assert_eq!(cpu.a, result);
-            assert!(cpu.flag_raised(cpu::CARRY) == did_overflow);
+            assert!(cpu.flag_raised(cpu::FlagBitPos::Carry) == did_overflow);
             println!("Test {test_index} passed.");
             test_index += 1;
         }
@@ -58,16 +58,17 @@ mod tests {
         let memory = Mem { bytes: [0; 4096] };
         let mut cpu = CPU::new(memory);
 
-        let lo = 0x06;
-        let hi = 0x02;
-        let addr: u16 = (hi << 8) | lo;
+        let lo = 0x03_u8;
+        let hi = 0x00_u8;
+        let addr: u16 = ((hi as u16) << 8) | (lo as u16);
         println!("addr: {addr:#04x}");
 
         let mut program: [u8; 2048] = [0; 2048]; // 2k bytes of 0.
-        program[0x600] = 0x6D_u8; // Absolute addressing adc instruction
-        program[0x601] = 0x06_u8;
-        program[0x602] = 0x02_u8;
-        program[addr as usize] = 0x19; // load the value to add into the calculated address
+        program[0] = 0x6D_u8; // Absolute addressing adc instruction
+        program[1] = 0x06_u8;
+        program[2] = 0x02_u8;
+        program[3] = 0x19_u8;
+        // program[addr as usize] = 0x19; // load the value to add into the calculated address
 
         cpu.load_program(&program);
 

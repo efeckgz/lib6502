@@ -3,12 +3,14 @@ pub mod addressing_modes;
 use crate::memory::Memory;
 use addressing_modes::AddressingMode;
 
-pub const CARRY: u8 = 0;
-pub const ZERO: u8 = 1;
-pub const INTERRUPT_DISABLE: u8 = 2;
-pub const DECIMAL: u8 = 3;
-pub const OVERFLOW: u8 = 6;
-pub const NEGATIVE: u8 = 7;
+pub enum FlagBitPos {
+    Carry = 0,
+    Zero = 1,
+    InterrputDisable = 2,
+    Decimal = 3,
+    Overflow = 6,
+    Negative = 7,
+}
 
 type InstructionExecuter<M> = fn(&mut CPU<M>, u16);
 
@@ -43,20 +45,6 @@ impl<M: Memory + 'static> CPU<M> {
         }
     }
 
-    // flag_raised returns the raised status of the given flag.
-    pub fn flag_raised(&self, flag: u8) -> bool {
-        (self.flag & (1 << flag)) != 0
-    }
-
-    // set_flag sets or clears the given flag according to the condition.
-    fn set_flag(&mut self, flag: u8, condition: bool) {
-        if condition {
-            self.flag |= 1 << flag; // set the flag
-        } else {
-            self.flag &= !(1 << flag); // clear the flag
-        }
-    }
-
     pub fn reset(&mut self) {
         self.memory.reset();
         self.a = 0;
@@ -65,6 +53,20 @@ impl<M: Memory + 'static> CPU<M> {
         self.pc = 0x600;
         self.sp = 0;
         self.flag = 0;
+    }
+
+    // flag_raised returns the raised status of the given flag.
+    pub fn flag_raised(&self, pos: FlagBitPos) -> bool {
+        (self.flag & (1 << pos as u8)) != 0
+    }
+
+    // set_flag sets or clears the given flag according to the condition.
+    fn set_flag(&mut self, pos: FlagBitPos, condition: bool) {
+        if condition {
+            self.flag |= 1 << pos as u8; // set the flag
+        } else {
+            self.flag &= !(1 << pos as u8); // clear the flag
+        }
     }
 
     fn read_and_inc_pc(&mut self) -> u8 {
@@ -125,19 +127,19 @@ impl<M: Memory + 'static> CPU<M> {
         let to_add = self.memory.read(operand);
 
         let (mut result, mut did_overflow) = a.overflowing_add(to_add);
-        if self.flag_raised(CARRY) {
+        if self.flag_raised(FlagBitPos::Carry) {
             (result, did_overflow) = result.overflowing_add(1); // if the carry flag is set add it.
         }
 
         self.a = result;
 
-        self.set_flag(CARRY, did_overflow);
-        self.set_flag(ZERO, self.a == 0);
+        self.set_flag(FlagBitPos::Carry, did_overflow);
+        self.set_flag(FlagBitPos::Zero, self.a == 0);
         self.set_flag(
-            OVERFLOW,
+            FlagBitPos::Overflow,
             ((self.a ^ result) & (to_add ^ result) & 0x80) != 0,
         );
-        self.set_flag(NEGATIVE, (self.a as i8) < 0);
+        self.set_flag(FlagBitPos::Negative, (self.a as i8) < 0);
     }
 
     fn and(&mut self, operand: u16) {
@@ -146,7 +148,7 @@ impl<M: Memory + 'static> CPU<M> {
         let result = val & a;
         self.a = result;
 
-        self.set_flag(NEGATIVE, (result as i8) < 0);
-        self.set_flag(ZERO, result == 0);
+        self.set_flag(FlagBitPos::Negative, (result as i8) < 0);
+        self.set_flag(FlagBitPos::Zero, result == 0);
     }
 }
