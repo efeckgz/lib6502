@@ -92,4 +92,21 @@ mod tests {
         cpu.run_for(2);
         assert_eq!(cpu.a, test_a & test_val);
     }
+
+    #[test]
+    fn lda_works() {
+        let memory = Mem { bytes: [0; 4096] };
+        let mut cpu = CPU::new(memory);
+
+        let mut program = [0; 2048];
+        program[0] = 0xA9_u8;
+        program[1] = 0x00_u8;
+
+        cpu.load_program(&program);
+        cpu.run_for(1);
+
+        assert_eq!(cpu.a, 0x00);
+        assert!(!cpu.flag_raised(cpu::FlagBitPos::Negative));
+        assert!(cpu.flag_raised(cpu::FlagBitPos::Zero));
+    }
 }

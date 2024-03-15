@@ -102,6 +102,16 @@ impl<M: Memory + 'static> CPU<M> {
             0x21 => (CPU::and, AddressingMode::IndirectX),
             0x31 => (CPU::and, AddressingMode::IndirectY),
 
+            // LDA
+            0xA9 => (CPU::lda, AddressingMode::Immediate),
+            0xA5 => (CPU::lda, AddressingMode::ZeroPage),
+            0xB5 => (CPU::lda, AddressingMode::ZeroPageX),
+            0xAD => (CPU::lda, AddressingMode::Absolute),
+            0xBD => (CPU::lda, AddressingMode::AbsoluteX),
+            0xB9 => (CPU::lda, AddressingMode::AbsoluteY),
+            0xA1 => (CPU::lda, AddressingMode::IndirectX),
+            0xB1 => (CPU::lda, AddressingMode::IndirectY),
+
             _ => todo!("opcode {opcode:#04x}, pc {0:#04x}", self.pc),
         }
     }
@@ -122,7 +132,7 @@ impl<M: Memory + 'static> CPU<M> {
         }
     }
 
-    pub fn adc(&mut self, operand: u16) {
+    fn adc(&mut self, operand: u16) {
         let a = self.a;
         let to_add = self.memory.read(operand);
         println!("operand: {operand:#04x}");
@@ -152,5 +162,14 @@ impl<M: Memory + 'static> CPU<M> {
 
         self.set_flag(FlagBitPos::Negative, (result as i8) < 0);
         self.set_flag(FlagBitPos::Zero, result == 0);
+    }
+
+    fn lda(&mut self, operand: u16) {
+        let val = self.memory.read(operand);
+        self.a = val;
+
+        // Set the status flags
+        self.set_flag(FlagBitPos::Negative, (val as i8) < 0);
+        self.set_flag(FlagBitPos::Zero, val == 0);
     }
 }
