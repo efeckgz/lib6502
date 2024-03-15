@@ -35,7 +35,8 @@ impl<M: Memory + 'static> CPU<M> {
                 Some((hi << 8) | lo)
             }
             AddressingMode::ZeroPage => {
-                let lo = self.read_and_inc_pc() as u16; // The next byte in memory. Casting to u16 makes the hi part 0.
+                // The next byte in memory. Casting to u16 makes the hi part 0.
+                let lo = self.read_and_inc_pc() as u16;
                 Some(lo)
             }
             AddressingMode::ZeroPageX => {

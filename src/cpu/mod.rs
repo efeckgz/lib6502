@@ -16,8 +16,8 @@ type InstructionExecuter<M> = fn(&mut CPU<M>, u16);
 
 pub struct CPU<M: Memory> {
     pub a: u8,
-    x: u8,
-    y: u8,
+    pub x: u8,
+    pub y: u8,
     pub pc: u16,
     sp: u8,
     flag: u8,
@@ -112,6 +112,20 @@ impl<M: Memory + 'static> CPU<M> {
             0xA1 => (CPU::lda, AddressingMode::IndirectX),
             0xB1 => (CPU::lda, AddressingMode::IndirectY),
 
+            // LDX
+            0xA2 => (CPU::ldx, AddressingMode::Immediate),
+            0xA6 => (CPU::ldx, AddressingMode::ZeroPage),
+            0xB6 => (CPU::ldx, AddressingMode::ZeroPageY),
+            0xAE => (CPU::ldx, AddressingMode::Absolute),
+            0xBE => (CPU::ldx, AddressingMode::AbsoluteY),
+
+            // LDY
+            0xA0 => (CPU::ldy, AddressingMode::Immediate),
+            0xA4 => (CPU::ldy, AddressingMode::ZeroPage),
+            0xB4 => (CPU::ldy, AddressingMode::ZeroPageX),
+            0xAC => (CPU::ldy, AddressingMode::Absolute),
+            0xBC => (CPU::ldy, AddressingMode::AbsoluteX),
+
             _ => todo!("opcode {opcode:#04x}, pc {0:#04x}", self.pc),
         }
     }
@@ -167,6 +181,24 @@ impl<M: Memory + 'static> CPU<M> {
     fn lda(&mut self, operand: u16) {
         let val = self.memory.read(operand);
         self.a = val;
+
+        // Set the status flags
+        self.set_flag(FlagBitPos::Negative, (val as i8) < 0);
+        self.set_flag(FlagBitPos::Zero, val == 0);
+    }
+
+    fn ldx(&mut self, operand: u16) {
+        let val = self.memory.read(operand);
+        self.x = val;
+
+        // Set the status flags
+        self.set_flag(FlagBitPos::Negative, (val as i8) < 0);
+        self.set_flag(FlagBitPos::Zero, val == 0);
+    }
+
+    fn ldy(&mut self, operand: u16) {
+        let val = self.memory.read(operand);
+        self.y = val;
 
         // Set the status flags
         self.set_flag(FlagBitPos::Negative, (val as i8) < 0);
