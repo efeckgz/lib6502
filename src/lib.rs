@@ -81,12 +81,11 @@ mod tests {
         let mut cpu = CPU::new(memory);
 
         // A test value to load to the a register.
-        // Since lda is not implemented we will add this number to A when A is 0.
+        // lda with test_a, then and a with test_val
         let test_a: u8 = 0x15;
         let test_val: u8 = 0x01; // we will and accumulator with this value.
 
-        // let program = vec![0x69, test_a, 0x29, test_val];
-        let program: [u8; 4] = [0x69, test_a, 0x29, test_val];
+        let program: [u8; 4] = [0xA9, test_a, 0x29, test_val];
         cpu.load_program(&program);
 
         cpu.run_for(2);
