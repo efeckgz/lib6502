@@ -102,7 +102,7 @@ mod tests {
         program[0] = 0xA9_u8;
         program[1] = 0x00_u8;
 
-        // program[0] = 0xA5_u8; // at 0x600
+        // program[0] = 0xA5_u8; // at 0x600 - zero page addressing
         // program[1] = 0xFA_u8; // at 0x601
         // program[0x00FA - 0x600] = 0x15;
 
