@@ -137,12 +137,10 @@ impl<M: Memory + 'static> CPU<M> {
     }
 
     pub fn run_for(&mut self, instructions: i32) {
-        let mut executed = 0;
-        while executed < instructions {
+        for _ in 0..instructions {
             let opcode = self.fetch();
             let (executer, mode) = self.decode(opcode);
             self.execute(executer, mode);
-            executed += 1;
         }
     }
 
