@@ -7,7 +7,7 @@ pub struct Instruction<M: Memory> {
     opcode: u8,                         // The opcode of the instruction
     pub mode: AddressingMode,           // The addressing mode used
     bytes: u8,                          // The length of the instruction in memory
-    cycles: u8,                         // The cycles this instruction takes to complete
+    cycles: u8, // The cycles this instruction takes to complete. In some instructions this could increment.
     pub executer: fn(&mut CPU<M>, u16), // The function that executes this instruction
 }
 
