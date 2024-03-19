@@ -89,61 +89,61 @@ impl<M: Memory + 'static> CPU<M> {
             0x69 => Instruction::new(opcode, AddressingMode::Immediate, 2, 2, CPU::adc),
             0x65 => Instruction::new(opcode, AddressingMode::ZeroPage, 2, 3, CPU::adc),
             0x75 => Instruction::new(opcode, AddressingMode::ZeroPageX, 2, 4, CPU::adc),
-            0x6D => (CPU::adc, AddressingMode::Absolute),
-            0x7D => (CPU::adc, AddressingMode::AbsoluteX),
-            0x79 => (CPU::adc, AddressingMode::AbsoluteY),
-            0x61 => (CPU::adc, AddressingMode::IndirectX),
-            0x71 => (CPU::adc, AddressingMode::IndirectY),
+            0x6D => Instruction::new(opcode, AddressingMode::Absolute, 3, 4, CPU::adc),
+            0x7D => Instruction::new(opcode, AddressingMode::AbsoluteX, 3, 4, CPU::adc),
+            0x79 => Instruction::new(opcode, AddressingMode::AbsoluteY, 3, 4, CPU::adc),
+            0x61 => Instruction::new(opcode, AddressingMode::IndirectX, 2, 6, CPU::adc),
+            0x71 => Instruction::new(opcode, AddressingMode::IndirectY, 2, 5, CPU::adc),
 
             // AND
-            0x29 => (CPU::and, AddressingMode::Immediate),
-            0x25 => (CPU::and, AddressingMode::ZeroPage),
-            0x35 => (CPU::and, AddressingMode::ZeroPageX),
-            0x2D => (CPU::and, AddressingMode::Absolute),
-            0x3D => (CPU::and, AddressingMode::AbsoluteX),
-            0x39 => (CPU::and, AddressingMode::AbsoluteY),
-            0x21 => (CPU::and, AddressingMode::IndirectX),
-            0x31 => (CPU::and, AddressingMode::IndirectY),
+            // 0x29 => (CPU::and, AddressingMode::Immediate),
+            // 0x25 => (CPU::and, AddressingMode::ZeroPage),
+            // 0x35 => (CPU::and, AddressingMode::ZeroPageX),
+            // 0x2D => (CPU::and, AddressingMode::Absolute),
+            // 0x3D => (CPU::and, AddressingMode::AbsoluteX),
+            // 0x39 => (CPU::and, AddressingMode::AbsoluteY),
+            // 0x21 => (CPU::and, AddressingMode::IndirectX),
+            // 0x31 => (CPU::and, AddressingMode::IndirectY),
 
-            // LDA
-            0xA9 => (CPU::lda, AddressingMode::Immediate),
-            0xA5 => (CPU::lda, AddressingMode::ZeroPage),
-            0xB5 => (CPU::lda, AddressingMode::ZeroPageX),
-            0xAD => (CPU::lda, AddressingMode::Absolute),
-            0xBD => (CPU::lda, AddressingMode::AbsoluteX),
-            0xB9 => (CPU::lda, AddressingMode::AbsoluteY),
-            0xA1 => (CPU::lda, AddressingMode::IndirectX),
-            0xB1 => (CPU::lda, AddressingMode::IndirectY),
+            // // LDA
+            // 0xA9 => (CPU::lda, AddressingMode::Immediate),
+            // 0xA5 => (CPU::lda, AddressingMode::ZeroPage),
+            // 0xB5 => (CPU::lda, AddressingMode::ZeroPageX),
+            // 0xAD => (CPU::lda, AddressingMode::Absolute),
+            // 0xBD => (CPU::lda, AddressingMode::AbsoluteX),
+            // 0xB9 => (CPU::lda, AddressingMode::AbsoluteY),
+            // 0xA1 => (CPU::lda, AddressingMode::IndirectX),
+            // 0xB1 => (CPU::lda, AddressingMode::IndirectY),
 
-            // LDX
-            0xA2 => (CPU::ldx, AddressingMode::Immediate),
-            0xA6 => (CPU::ldx, AddressingMode::ZeroPage),
-            0xB6 => (CPU::ldx, AddressingMode::ZeroPageY),
-            0xAE => (CPU::ldx, AddressingMode::Absolute),
-            0xBE => (CPU::ldx, AddressingMode::AbsoluteY),
+            // // LDX
+            // 0xA2 => (CPU::ldx, AddressingMode::Immediate),
+            // 0xA6 => (CPU::ldx, AddressingMode::ZeroPage),
+            // 0xB6 => (CPU::ldx, AddressingMode::ZeroPageY),
+            // 0xAE => (CPU::ldx, AddressingMode::Absolute),
+            // 0xBE => (CPU::ldx, AddressingMode::AbsoluteY),
 
-            // LDY
-            0xA0 => (CPU::ldy, AddressingMode::Immediate),
-            0xA4 => (CPU::ldy, AddressingMode::ZeroPage),
-            0xB4 => (CPU::ldy, AddressingMode::ZeroPageX),
-            0xAC => (CPU::ldy, AddressingMode::Absolute),
-            0xBC => (CPU::ldy, AddressingMode::AbsoluteX),
-
+            // // LDY
+            // 0xA0 => (CPU::ldy, AddressingMode::Immediate),
+            // 0xA4 => (CPU::ldy, AddressingMode::ZeroPage),
+            // 0xB4 => (CPU::ldy, AddressingMode::ZeroPageX),
+            // 0xAC => (CPU::ldy, AddressingMode::Absolute),
+            // 0xBC => (CPU::ldy, AddressingMode::AbsoluteX),
             _ => todo!("opcode {opcode:#04x}, pc {0:#04x}", self.pc),
         }
     }
 
-    pub fn execute(&mut self, operation: InstructionExecuter<M>, mode: AddressingMode) {
-        let operand = self.decode_operand(mode);
-        println!("PC after decode: {0:#04x}", self.pc);
-        operation(self, operand.unwrap()); // Unwrap is safe to use here because in cases where operand is None there is no need for it anyway.
+    pub fn execute(&mut self, instruction: Instruction<M>) {
+        // Unwrap is safe to use here because in cases where the operand is None there is no need for an operand anyway.
+        let operand = self.resolve_operand(instruction.mode).unwrap();
+        (instruction.executer)(self, operand);
     }
 
     pub fn run_for(&mut self, instructions: i32) {
         for _ in 0..instructions {
             let opcode = self.fetch();
-            let (executer, mode) = self.decode(opcode);
-            self.execute(executer, mode);
+            // let (executer, mode) = self.decode(opcode);
+            let instruction = self.decode(opcode);
+            self.execute(instruction);
         }
     }
 
