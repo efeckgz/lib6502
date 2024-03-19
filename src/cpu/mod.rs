@@ -1,7 +1,10 @@
 pub mod addressing_modes;
+pub mod instructions;
 
 use crate::memory::Memory;
 use addressing_modes::AddressingMode;
+
+use self::instructions::Instruction;
 
 pub enum FlagBitPos {
     Carry = 0,
@@ -80,12 +83,12 @@ impl<M: Memory + 'static> CPU<M> {
         opcode
     }
 
-    pub fn decode(&self, opcode: u8) -> (InstructionExecuter<M>, AddressingMode) {
+    pub fn decode(&self, opcode: u8) -> Instruction<M> {
         match opcode {
             // ADC
-            0x69 => (CPU::adc, AddressingMode::Immediate),
-            0x65 => (CPU::adc, AddressingMode::ZeroPage),
-            0x75 => (CPU::adc, AddressingMode::ZeroPageX),
+            0x69 => Instruction::new(opcode, AddressingMode::Immediate, 2, 2, CPU::adc),
+            0x65 => Instruction::new(opcode, AddressingMode::ZeroPage, 2, 3, CPU::adc),
+            0x75 => Instruction::new(opcode, AddressingMode::ZeroPageX, 2, 4, CPU::adc),
             0x6D => (CPU::adc, AddressingMode::Absolute),
             0x7D => (CPU::adc, AddressingMode::AbsoluteX),
             0x79 => (CPU::adc, AddressingMode::AbsoluteY),
