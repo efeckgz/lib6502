@@ -96,24 +96,24 @@ impl<M: Memory + 'static> CPU<M> {
             0x71 => Instruction::new(opcode, AddressingMode::IndirectY, 2, 5, CPU::adc),
 
             // AND
-            // 0x29 => (CPU::and, AddressingMode::Immediate),
-            // 0x25 => (CPU::and, AddressingMode::ZeroPage),
-            // 0x35 => (CPU::and, AddressingMode::ZeroPageX),
-            // 0x2D => (CPU::and, AddressingMode::Absolute),
-            // 0x3D => (CPU::and, AddressingMode::AbsoluteX),
-            // 0x39 => (CPU::and, AddressingMode::AbsoluteY),
-            // 0x21 => (CPU::and, AddressingMode::IndirectX),
-            // 0x31 => (CPU::and, AddressingMode::IndirectY),
+            0x29 => Instruction::new(opcode, AddressingMode::Immediate, 2, 2, CPU::and),
+            0x25 => Instruction::new(opcode, AddressingMode::ZeroPage, 2, 3, CPU::and),
+            0x35 => Instruction::new(opcode, AddressingMode::ZeroPageX, 2, 4, CPU::and),
+            0x2D => Instruction::new(opcode, AddressingMode::Absolute, 3, 4, CPU::and),
+            0x3D => Instruction::new(opcode, AddressingMode::AbsoluteX, 3, 4, CPU::and),
+            0x39 => Instruction::new(opcode, AddressingMode::AbsoluteY, 3, 4, CPU::and),
+            0x21 => Instruction::new(opcode, AddressingMode::IndirectX, 2, 6, CPU::and),
+            0x31 => Instruction::new(opcode, AddressingMode::IndirectY, 2, 5, CPU::and),
 
-            // // LDA
-            // 0xA9 => (CPU::lda, AddressingMode::Immediate),
-            // 0xA5 => (CPU::lda, AddressingMode::ZeroPage),
-            // 0xB5 => (CPU::lda, AddressingMode::ZeroPageX),
-            // 0xAD => (CPU::lda, AddressingMode::Absolute),
-            // 0xBD => (CPU::lda, AddressingMode::AbsoluteX),
-            // 0xB9 => (CPU::lda, AddressingMode::AbsoluteY),
-            // 0xA1 => (CPU::lda, AddressingMode::IndirectX),
-            // 0xB1 => (CPU::lda, AddressingMode::IndirectY),
+            // LDA
+            0xA9 => Instruction::new(opcode, AddressingMode::Immediate, 2, 2, CPU::lda),
+            0xA5 => Instruction::new(opcode, AddressingMode::ZeroPage, 2, 3, CPU::lda),
+            0xB5 => Instruction::new(opcode, AddressingMode::ZeroPageX, 2, 4, CPU::lda),
+            0xAD => Instruction::new(opcode, AddressingMode::Absolute, 3, 4, CPU::lda),
+            0xBD => Instruction::new(opcode, AddressingMode::AbsoluteX, 3, 4, CPU::lda),
+            0xB9 => Instruction::new(opcode, AddressingMode::AbsoluteY, 3, 4, CPU::lda),
+            0xA1 => Instruction::new(opcode, AddressingMode::IndirectX, 2, 6, CPU::lda),
+            0xB1 => Instruction::new(opcode, AddressingMode::IndirectY, 2, 5, CPU::lda),
 
             // // LDX
             // 0xA2 => (CPU::ldx, AddressingMode::Immediate),
