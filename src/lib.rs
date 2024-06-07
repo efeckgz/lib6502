@@ -1,30 +1,49 @@
-use memory::Memory;
+// use memory::Memory;
 
 pub mod cpu;
 pub mod memory;
 
-struct Mem {
-    pub bytes: [u8; 4096],
-}
+// struct Mem {
+//     pub bytes: [u8; 4096],
+// }
 
-impl Memory for Mem {
-    fn read_byte(&self, addr: u16) -> u8 {
-        self.bytes[addr as usize]
-    }
+// impl Memory for Mem {
+//     fn read_byte(&self, addr: u16) -> u8 {
+//         self.bytes[addr as usize]
+//     }
 
-    fn write_byte(&mut self, addr: u16, data: u8) {
-        self.bytes[addr as usize] = data;
-    }
+//     fn write_byte(&mut self, addr: u16, data: u8) {
+//         self.bytes[addr as usize] = data;
+//     }
 
-    fn reset(&mut self) {
-        self.bytes = [0; 4096];
-    }
-}
+//     fn reset(&mut self) {
+//         self.bytes = [0; 4096];
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
     use self::cpu::CPU;
     use super::*;
+    use memory::Memory;
+
+    struct Mem {
+        pub bytes: [u8; 4096],
+    }
+
+    impl Memory for Mem {
+        fn read_byte(&self, addr: u16) -> u8 {
+            self.bytes[addr as usize]
+        }
+
+        fn write_byte(&mut self, addr: u16, data: u8) {
+            self.bytes[addr as usize] = data;
+        }
+
+        fn reset(&mut self) {
+            self.bytes = [0; 4096];
+        }
+    }
 
     #[test]
     fn adc_works() {
