@@ -41,7 +41,7 @@ impl<M: Memory + 'static> CPU<M> {
     pub fn load_program(&mut self, program: &[u8]) {
         for (offset, &byte) in program.iter().enumerate() {
             let address = self.pc + offset as u16;
-            self.memory.write(address, byte);
+            self.memory.write_byte(address, byte);
         }
     }
 
@@ -70,7 +70,7 @@ impl<M: Memory + 'static> CPU<M> {
     }
 
     fn read_and_inc_pc(&mut self) -> u8 {
-        let val = self.memory.read(self.pc);
+        let val = self.memory.read_byte(self.pc);
         self.pc += 1;
         val
     }
@@ -146,7 +146,7 @@ impl<M: Memory + 'static> CPU<M> {
 
     fn adc(&mut self, operand: u16) {
         let a = self.a;
-        let to_add = self.memory.read(operand);
+        let to_add = self.memory.read_byte(operand);
         println!("operand: {operand:#04x}");
         println!("to add: {to_add:#04x}");
 
@@ -159,6 +159,7 @@ impl<M: Memory + 'static> CPU<M> {
 
         self.set_flag(FlagBitPos::Carry, did_overflow);
         self.set_flag(FlagBitPos::Zero, self.a == 0);
+        // I have no idea how this works
         self.set_flag(
             FlagBitPos::Overflow,
             ((self.a ^ result) & (to_add ^ result) & 0x80) != 0,
@@ -167,7 +168,7 @@ impl<M: Memory + 'static> CPU<M> {
     }
 
     fn and(&mut self, operand: u16) {
-        let val = self.memory.read(operand);
+        let val = self.memory.read_byte(operand);
         let a = self.a;
         let result = val & a;
         self.a = result;
@@ -177,7 +178,7 @@ impl<M: Memory + 'static> CPU<M> {
     }
 
     fn lda(&mut self, operand: u16) {
-        let val = self.memory.read(operand);
+        let val = self.memory.read_byte(operand);
         self.a = val;
 
         // Set the status flags
@@ -186,7 +187,7 @@ impl<M: Memory + 'static> CPU<M> {
     }
 
     fn ldx(&mut self, operand: u16) {
-        let val = self.memory.read(operand);
+        let val = self.memory.read_byte(operand);
         self.x = val;
 
         // Set the status flags
@@ -195,7 +196,7 @@ impl<M: Memory + 'static> CPU<M> {
     }
 
     fn ldy(&mut self, operand: u16) {
-        let val = self.memory.read(operand);
+        let val = self.memory.read_byte(operand);
         self.y = val;
 
         // Set the status flags

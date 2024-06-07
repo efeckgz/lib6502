@@ -8,11 +8,11 @@ struct Mem {
 }
 
 impl Memory for Mem {
-    fn read(&self, addr: u16) -> u8 {
+    fn read_byte(&self, addr: u16) -> u8 {
         self.bytes[addr as usize]
     }
 
-    fn write(&mut self, addr: u16, data: u8) {
+    fn write_byte(&mut self, addr: u16, data: u8) {
         self.bytes[addr as usize] = data;
     }
 

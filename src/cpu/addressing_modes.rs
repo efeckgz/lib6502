@@ -71,8 +71,8 @@ impl<M: Memory + 'static> CPU<M> {
             AddressingMode::IndirectX => {
                 let second_byte = self.read_and_inc_pc();
                 let plus_x = second_byte.wrapping_add(self.x);
-                let lo = self.memory.read(plus_x as u16) as u16;
-                let hi = self.memory.read((plus_x.wrapping_add(1)) as u16) as u16;
+                let lo = self.memory.read_byte(plus_x as u16) as u16;
+                let hi = self.memory.read_byte((plus_x.wrapping_add(1)) as u16) as u16;
                 let addr = (hi << 8) | lo;
                 Some(addr)
             }
