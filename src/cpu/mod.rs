@@ -285,6 +285,23 @@ mod tests {
     }
 
     #[test]
+    fn zp_adc_works() {
+        let memory = Mem::new();
+        let mut cpu = CPU::new(memory);
+        let lo = 0xFF_u8; // Computed zero page address should be 0x00FF
+
+        let mut program: [u8; 2048] = [0; 2048];
+        program[0] = 0x65_u8; // Zero page addressing adc instruction
+        program[1] = lo;
+
+        cpu.load_program(&program);
+        // Hard code the test value into system memory since loading starts after zero page
+        cpu.memory.write_byte(0x00FF, 0x42);
+        cpu.run_for(1);
+        assert_eq!(cpu.a, 0x42);
+    }
+
+    #[test]
     fn and_works() {
         let memory = Mem::new();
         let mut cpu = CPU::new(memory);
