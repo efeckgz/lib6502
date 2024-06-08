@@ -208,10 +208,7 @@ impl<M: Memory + 'static> CPU<M> {
 
 #[cfg(test)]
 mod tests {
-    // use self::cpu::CPU;
     use super::*;
-    // use crate::cpu::FlagBitPos;
-    // use memory::Memory;
 
     #[derive(Debug)]
     struct Mem {
