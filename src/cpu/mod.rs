@@ -302,6 +302,27 @@ mod tests {
     }
 
     #[test]
+    fn zpx_adc_works() {
+        let memory = Mem::new();
+        let mut cpu = CPU::new(memory);
+        let mut program: [u8; 2048] = [0; 2048];
+
+        // Load x register 0x60
+        program[0] = 0xA2_u8;
+        program[1] = 0x60_u8;
+
+        // Zero page x adc
+        program[2] = 0x75_u8;
+        // The computed value should wrap around zero page and be 0x0020;
+        program[3] = 0xC0_u8;
+
+        cpu.load_program(&program);
+        cpu.memory.write_byte(0x20, 0x42);
+        cpu.run_for(2);
+        assert_eq!(cpu.a, 0x42);
+    }
+
+    #[test]
     fn and_works() {
         let memory = Mem::new();
         let mut cpu = CPU::new(memory);
