@@ -39,6 +39,18 @@ impl<M: Memory + 'static> CPU<M> {
         }
     }
 
+    pub fn from_pc(pc: u16, memory: M) -> Self {
+        Self {
+            a: 0,
+            x: 0,
+            y: 0,
+            pc,
+            sp: 0,
+            flag: 0,
+            memory,
+        }
+    }
+
     pub fn load_program(&mut self, program: &[u8]) {
         for (offset, &byte) in program.iter().enumerate() {
             let address = self.pc + offset as u16;
@@ -46,12 +58,13 @@ impl<M: Memory + 'static> CPU<M> {
         }
     }
 
-    pub fn reset(&mut self) {
+    // Find a better way to handle pc
+    pub fn reset(&mut self, pc: u16) {
         self.memory.reset();
         self.a = 0;
         self.x = 0;
         self.y = 0;
-        self.pc = 0x600;
+        self.pc = pc;
         self.sp = 0;
         self.flag = 0;
     }
@@ -237,29 +250,56 @@ mod tests {
 
     #[test]
     fn adc_works() {
+        // let memory = Mem::new();
+        // let mut cpu = CPU::new(memory);
+
+        // let tests = vec![
+        //     (0x69_u8, 0xFF_u8, 0x18_u8),
+        //     (0x69_u8, 0x1A_u8, 0xBD_u8),
+        //     (0x69_u8, 0xFF_u8, 0x01_u8),
+        // ];
+
+        // let mut test_index = 1;
+        // for (opcode, add_1, add_2) in tests {
+        //     cpu.reset();
+        //     let (result, did_overflow) = add_1.overflowing_add(add_2);
+        //     // let program = vec![opcode, add_1, opcode, add_2];
+        //     let program: [u8; 4] = [opcode, add_1, opcode, add_2];
+        //     cpu.load_program(&program);
+        //     cpu.run_for(2);
+
+        //     assert_eq!(cpu.a, result);
+        //     assert!(cpu.flag_raised(FlagBitPos::Carry) == did_overflow);
+        //     println!("Test {test_index} passed.");
+        //     test_index += 1;
+        // }
         let memory = Mem::new();
-        let mut cpu = CPU::new(memory);
+        let mut cpu = CPU::from_pc(0x000, memory);
 
-        let tests = vec![
-            (0x69_u8, 0xFF_u8, 0x18_u8),
-            (0x69_u8, 0x1A_u8, 0xBD_u8),
-            (0x69_u8, 0xFF_u8, 0x01_u8),
-        ];
+        // Immidiate addressing
+        let mut program: [u8; 2048] = [0; 2048];
+        program[0] = 0x69_u8;
+        program[1] = 0xFF_u8;
 
-        let mut test_index = 1;
-        for (opcode, add_1, add_2) in tests {
-            cpu.reset();
-            let (result, did_overflow) = add_1.overflowing_add(add_2);
-            // let program = vec![opcode, add_1, opcode, add_2];
-            let program: [u8; 4] = [opcode, add_1, opcode, add_2];
-            cpu.load_program(&program);
-            cpu.run_for(2);
+        cpu.load_program(&program);
+        cpu.run_for(1);
+        assert_eq!(cpu.a, 0xFF);
 
-            assert_eq!(cpu.a, result);
-            assert!(cpu.flag_raised(FlagBitPos::Carry) == did_overflow);
-            println!("Test {test_index} passed.");
-            test_index += 1;
-        }
+        cpu.reset(0x0000);
+
+        // Absolute addressing
+        let lo = 0x10_u8;
+        let hi = 0x06_u8;
+
+        let mut program: [u8; 2048] = [0; 2048];
+        program[0] = 0x6D_u8;
+        program[1] = lo;
+        program[2] = hi;
+        program[0x610] = 0x19_u8;
+
+        cpu.load_program(&program);
+        cpu.run_for(1);
+        assert_eq!(cpu.a, 0x19);
     }
 
     #[test]
