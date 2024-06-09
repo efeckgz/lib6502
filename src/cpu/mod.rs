@@ -250,29 +250,6 @@ mod tests {
 
     #[test]
     fn adc_works() {
-        // let memory = Mem::new();
-        // let mut cpu = CPU::new(memory);
-
-        // let tests = vec![
-        //     (0x69_u8, 0xFF_u8, 0x18_u8),
-        //     (0x69_u8, 0x1A_u8, 0xBD_u8),
-        //     (0x69_u8, 0xFF_u8, 0x01_u8),
-        // ];
-
-        // let mut test_index = 1;
-        // for (opcode, add_1, add_2) in tests {
-        //     cpu.reset();
-        //     let (result, did_overflow) = add_1.overflowing_add(add_2);
-        //     // let program = vec![opcode, add_1, opcode, add_2];
-        //     let program: [u8; 4] = [opcode, add_1, opcode, add_2];
-        //     cpu.load_program(&program);
-        //     cpu.run_for(2);
-
-        //     assert_eq!(cpu.a, result);
-        //     assert!(cpu.flag_raised(FlagBitPos::Carry) == did_overflow);
-        //     println!("Test {test_index} passed.");
-        //     test_index += 1;
-        // }
         let memory = Mem::new();
         let mut cpu = CPU::from_pc(0x000, memory);
 
@@ -284,6 +261,43 @@ mod tests {
         cpu.load_program(&program);
         cpu.run_for(1);
         assert_eq!(cpu.a, 0xFF);
+
+        cpu.reset(0x0000);
+
+        // Zero Page addressing
+        let zpaddr = 0xFF_u8;
+        let mut program: [u8; 2048] = [0; 2048];
+        program[0] = 0x65_u8;
+        program[1] = zpaddr;
+        program[0x00FF] = 0x42;
+
+        cpu.load_program(&program);
+        cpu.run_for(1);
+        assert_eq!(cpu.a, 0x42);
+        assert!(!cpu.flag_raised(FlagBitPos::Zero));
+        assert!(!cpu.flag_raised(FlagBitPos::Negative));
+
+        cpu.reset(0x0000);
+
+        // Zero Page X addressing
+        let zpaddr = 0xC0_u8; // Base address given.
+        let mut program: [u8; 2048] = [0; 2048];
+
+        // Load an initial value into X register
+        program[0] = 0xA2_u8;
+        program[1] = 0x60_u8; // Computed address should be (0x60 + 0xC0) % 0xFF = 0x20
+
+        // Test the instruction
+        program[2] = 0x75_u8;
+        program[3] = zpaddr;
+        program[0x20] = 0x42;
+
+        cpu.load_program(&program);
+        cpu.run_for(2);
+
+        assert_eq!(cpu.a, 0x42);
+        assert!(!cpu.flag_raised(FlagBitPos::Zero));
+        assert!(!cpu.flag_raised(FlagBitPos::Negative));
 
         cpu.reset(0x0000);
 
@@ -300,66 +314,56 @@ mod tests {
         cpu.load_program(&program);
         cpu.run_for(1);
         assert_eq!(cpu.a, 0x19);
-    }
 
-    #[test]
-    fn abs_adc_works() {
-        let memory = Mem::new();
-        let mut cpu = CPU::new(memory);
+        cpu.reset(0x0000);
 
+        // Absolute X addressing mode
+        // Base address will be 0x0610
         let lo = 0x10_u8;
         let hi = 0x06_u8;
-        let addr: u16 = ((hi as u16) << 8) | (lo as u16); // should be 0x610
-        println!("addr: {addr:#04x}");
-
-        let mut program: [u8; 2048] = [0; 2048]; // 2k bytes of 0.
-        program[0] = 0x6D_u8; // Absolute addressing adc instruction
-        program[1] = lo;
-        program[2] = hi;
-        program[0x10] = 0x19_u8; // memory address 0x610 will have the value 0x19
-
-        cpu.load_program(&program);
-
-        cpu.run_for(1);
-        assert_eq!(cpu.a, 0x19);
-    }
-
-    #[test]
-    fn zp_adc_works() {
-        let memory = Mem::new();
-        let mut cpu = CPU::new(memory);
-        let lo = 0xFF_u8; // Computed zero page address should be 0x00FF
+        let init_x = 0x15_u8; // Initial X register value to use as offset
 
         let mut program: [u8; 2048] = [0; 2048];
-        program[0] = 0x65_u8; // Zero page addressing adc instruction
-        program[1] = lo;
-
-        cpu.load_program(&program);
-        // Hard code the test value into system memory since loading starts after zero page
-        cpu.memory.write_byte(0x00FF, 0x42);
-        cpu.run_for(1);
-        assert_eq!(cpu.a, 0x42);
-    }
-
-    #[test]
-    fn zpx_adc_works() {
-        let memory = Mem::new();
-        let mut cpu = CPU::new(memory);
-        let mut program: [u8; 2048] = [0; 2048];
-
-        // Load x register 0x60
+        // Load an initial value into X register
         program[0] = 0xA2_u8;
-        program[1] = 0x60_u8;
+        program[1] = init_x; // Computed address will be 0x0625
 
-        // Zero page x adc
-        program[2] = 0x75_u8;
-        // The computed value should wrap around zero page and be 0x0020;
-        program[3] = 0xC0_u8;
+        // Test the instruction
+        program[2] = 0x7D_u8;
+        program[3] = lo;
+        program[4] = hi;
+        program[0x0625] = 0x42_u8;
 
         cpu.load_program(&program);
-        cpu.memory.write_byte(0x20, 0x42);
         cpu.run_for(2);
-        assert_eq!(cpu.a, 0x42);
+
+        assert_eq!(cpu.a, 0x42_u8);
+
+        cpu.reset(0x0000);
+
+        // Absolute Y addressing
+        // Base address will be 0x0610
+        let lo = 0x10_u8;
+        let hi = 0x06_u8;
+        let init_y = 0x15_u8; // Initial Y register value to use as offset
+
+        let mut program: [u8; 2048] = [0; 2048];
+        // Load an initial value into X register
+        program[0] = 0xA0_u8;
+        program[1] = init_y; // Computed address will be 0x0625
+
+        // Test the instruction
+        program[2] = 0x79_u8;
+        program[3] = lo;
+        program[4] = hi;
+        program[0x0625] = 0x42_u8;
+
+        cpu.load_program(&program);
+        cpu.run_for(2);
+
+        assert_eq!(cpu.a, 0x42_u8);
+
+        cpu.reset(0x0000);
     }
 
     #[test]
