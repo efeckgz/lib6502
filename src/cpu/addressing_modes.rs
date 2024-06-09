@@ -20,7 +20,7 @@ pub enum AddressingMode {
 
 impl<M: Memory + 'static> CPU<M> {
     pub fn decode_operand(&mut self, mode: AddressingMode) -> Option<u16> {
-        println!("PC before decode: {0:#04x}", self.pc);
+        // println!("PC before decode: {0:#04x}", self.pc);
         match mode {
             AddressingMode::Accumulator => Some(self.a as u16),
             AddressingMode::Immediate => {

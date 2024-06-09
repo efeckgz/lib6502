@@ -146,7 +146,7 @@ impl<M: Memory + 'static> CPU<M> {
 
     pub fn execute(&mut self, operation: InstructionExecuter<M>, mode: AddressingMode) {
         let operand = self.decode_operand(mode);
-        println!("PC after decode: {0:#04x}", self.pc);
+        // println!("PC after decode: {0:#04x}", self.pc);
         operation(self, operand.unwrap()); // Unwrap is safe to use here because in cases where operand is None there is no need for it anyway.
     }
 
@@ -161,8 +161,8 @@ impl<M: Memory + 'static> CPU<M> {
     fn adc(&mut self, operand: u16) {
         let a = self.a;
         let to_add = self.memory.read_byte(operand);
-        println!("operand: {operand:#04x}");
-        println!("to add: {to_add:#04x}");
+        // println!("operand: {operand:#04x}");
+        // println!("to add: {to_add:#04x}");
 
         let (mut result, mut did_overflow) = a.overflowing_add(to_add);
         if self.flag_raised(FlagBitPos::Carry) {
