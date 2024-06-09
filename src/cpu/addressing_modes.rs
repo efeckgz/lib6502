@@ -53,6 +53,8 @@ impl<M: Memory + 'static> CPU<M> {
                 let lo = self.read_and_inc_pc() as u16;
                 let hi = self.read_and_inc_pc() as u16;
                 let absolute = (hi << 8) | lo;
+
+                // Maybe use overflowing_add and if did_overflow pc++
                 Some(absolute.wrapping_add(self.x as u16))
             }
             AddressingMode::AbsoluteY => {
