@@ -364,6 +364,9 @@ mod tests {
         assert_eq!(cpu.a, 0x42_u8);
 
         cpu.reset(0x0000);
+
+        // (Indirect, X) addresing
+
     }
 
     #[test]
