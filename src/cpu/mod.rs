@@ -12,7 +12,7 @@ pub enum FlagBitPos {
     Negative = 7,
 }
 
-type InstructionExecuter<M> = fn(&mut CPU<M>, u16);
+type InstructionExecuter<M> = fn(&mut CPU<M>, Option<u16>);
 
 #[derive(Debug)]
 pub struct CPU<M: Memory> {
@@ -116,6 +116,9 @@ impl<M: Memory + 'static> CPU<M> {
             0x21 => (CPU::and, AddressingMode::IndirectX),
             0x31 => (CPU::and, AddressingMode::IndirectY),
 
+            // ASL
+            // ASL instructions here
+
             // LDA
             0xA9 => (CPU::lda, AddressingMode::Immediate),
             0xA5 => (CPU::lda, AddressingMode::ZeroPage),
@@ -147,7 +150,7 @@ impl<M: Memory + 'static> CPU<M> {
     pub fn execute(&mut self, operation: InstructionExecuter<M>, mode: AddressingMode) {
         let operand = self.decode_operand(mode);
         // println!("PC after decode: {0:#04x}", self.pc);
-        operation(self, operand.unwrap()); // Unwrap is safe to use here because in cases where operand is None there is no need for it anyway.
+        operation(self, operand); // Unwrap is safe to use here because in cases where operand is None there is no need for it anyway.
     }
 
     pub fn run_for(&mut self, instructions: i32) {
@@ -158,64 +161,74 @@ impl<M: Memory + 'static> CPU<M> {
         }
     }
 
-    fn adc(&mut self, operand: u16) {
-        let a = self.a;
-        let to_add = self.memory.read_byte(operand);
-        // println!("operand: {operand:#04x}");
-        // println!("to add: {to_add:#04x}");
+    fn adc(&mut self, operand: Option<u16>) {
+        if let Some(actual_operand) = operand {
+            let a = self.a;
+            let to_add = self.memory.read_byte(actual_operand);
+            // println!("operand: {operand:#04x}");
+            // println!("to add: {to_add:#04x}");
 
-        let (mut result, mut did_overflow) = a.overflowing_add(to_add);
-        if self.flag_raised(FlagBitPos::Carry) {
-            (result, did_overflow) = result.overflowing_add(1); // if the carry flag is set add it.
+            let (mut result, mut did_overflow) = a.overflowing_add(to_add);
+            if self.flag_raised(FlagBitPos::Carry) {
+                (result, did_overflow) = result.overflowing_add(1); // if the carry flag is set add it.
+            }
+
+            self.a = result;
+
+            self.set_flag(FlagBitPos::Carry, did_overflow);
+            self.set_flag(FlagBitPos::Zero, self.a == 0);
+            // The sign of both inputs is different than the sign of the output.
+            self.set_flag(
+                FlagBitPos::Overflow,
+                ((self.a ^ result) & (to_add ^ result) & 0x80) != 0,
+            );
+            self.set_flag(FlagBitPos::Negative, (self.a as i8) < 0);
         }
-
-        self.a = result;
-
-        self.set_flag(FlagBitPos::Carry, did_overflow);
-        self.set_flag(FlagBitPos::Zero, self.a == 0);
-        // The sign of both inputs is different than the sign of the output.
-        self.set_flag(
-            FlagBitPos::Overflow,
-            ((self.a ^ result) & (to_add ^ result) & 0x80) != 0,
-        );
-        self.set_flag(FlagBitPos::Negative, (self.a as i8) < 0);
     }
 
-    fn and(&mut self, operand: u16) {
-        let val = self.memory.read_byte(operand);
-        let a = self.a;
-        let result = val & a;
-        self.a = result;
+    fn and(&mut self, operand: Option<u16>) {
+        if let Some(actual_operand) = operand {
+            let val = self.memory.read_byte(actual_operand);
+            let a = self.a;
+            let result = val & a;
+            self.a = result;
 
-        self.set_flag(FlagBitPos::Negative, (result as i8) < 0);
-        self.set_flag(FlagBitPos::Zero, result == 0);
+            self.set_flag(FlagBitPos::Negative, (result as i8) < 0);
+            self.set_flag(FlagBitPos::Zero, result == 0);
+        }
     }
 
-    fn lda(&mut self, operand: u16) {
-        let val = self.memory.read_byte(operand);
-        self.a = val;
+    fn lda(&mut self, operand: Option<u16>) {
+        if let Some(actual_operand) = operand {
+            let val = self.memory.read_byte(actual_operand);
+            self.a = val;
 
-        // Set the status flags
-        self.set_flag(FlagBitPos::Negative, (val as i8) < 0);
-        self.set_flag(FlagBitPos::Zero, val == 0);
+            // Set the status flags
+            self.set_flag(FlagBitPos::Negative, (val as i8) < 0);
+            self.set_flag(FlagBitPos::Zero, val == 0);
+        }
     }
 
-    fn ldx(&mut self, operand: u16) {
-        let val = self.memory.read_byte(operand);
-        self.x = val;
+    fn ldx(&mut self, operand: Option<u16>) {
+        if let Some(actual_operand) = operand {
+            let val = self.memory.read_byte(actual_operand);
+            self.x = val;
 
-        // Set the status flags
-        self.set_flag(FlagBitPos::Negative, (val as i8) < 0);
-        self.set_flag(FlagBitPos::Zero, val == 0);
+            // Set the status flags
+            self.set_flag(FlagBitPos::Negative, (val as i8) < 0);
+            self.set_flag(FlagBitPos::Zero, val == 0);
+        }
     }
 
-    fn ldy(&mut self, operand: u16) {
-        let val = self.memory.read_byte(operand);
-        self.y = val;
+    fn ldy(&mut self, operand: Option<u16>) {
+        if let Some(actual_operand) = operand {
+            let val = self.memory.read_byte(actual_operand);
+            self.y = val;
 
-        // Set the status flags
-        self.set_flag(FlagBitPos::Negative, (val as i8) < 0);
-        self.set_flag(FlagBitPos::Zero, val == 0);
+            // Set the status flags
+            self.set_flag(FlagBitPos::Negative, (val as i8) < 0);
+            self.set_flag(FlagBitPos::Zero, val == 0);
+        }
     }
 }
 
