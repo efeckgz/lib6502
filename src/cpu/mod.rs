@@ -1,5 +1,7 @@
 pub mod addressing_modes;
 
+use core::mem::zeroed;
+
 use crate::memory::Memory;
 use addressing_modes::AddressingMode;
 
@@ -117,7 +119,11 @@ impl<M: Memory + 'static> CPU<M> {
             0x31 => (CPU::and, AddressingMode::IndirectY),
 
             // ASL
-            // ASL instructions here
+            0x0A => (CPU::asl, AddressingMode::Accumulator),
+            0x06 => (CPU::asl, AddressingMode::ZeroPage),
+            0x16 => (CPU::asl, AddressingMode::ZeroPageX),
+            0x0E => (CPU::asl, AddressingMode::Absolute),
+            0x1E => (CPU::asl, AddressingMode::AbsoluteX),
 
             // LDA
             0xA9 => (CPU::lda, AddressingMode::Immediate),
@@ -200,9 +206,24 @@ impl<M: Memory + 'static> CPU<M> {
 
     fn asl(&mut self, operand: Option<u16>) {
         if let Some(actual_operand) = operand {
-            // Addressing mode exists
+            let mut value = self.memory.read_byte(actual_operand);
+            let shifted_out = value >> 7; // Bit 7 is shifted out
+            value <<= 1;
+            self.memory.write_byte(actual_operand, value);
+
+            // Set the flags
+            self.set_flag(FlagBitPos::Carry, shifted_out == 1);
+            self.set_flag(FlagBitPos::Zero, value == 0);
+            self.set_flag(FlagBitPos::Negative, (value as i8) < 0);
         } else {
             // Accumulator addressing
+            let shifted_out = self.a >> 7; // Bit 7 is shifted out
+            self.a <<= 1; // Left shift the accumulator
+
+            // Set the flags
+            self.set_flag(FlagBitPos::Carry, shifted_out == 1);
+            self.set_flag(FlagBitPos::Zero, self.a == 0);
+            self.set_flag(FlagBitPos::Negative, (self.a as i8) < 0);
         }
     }
 
