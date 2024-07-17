@@ -1,7 +1,5 @@
 pub mod addressing_modes;
 
-use core::mem::zeroed;
-
 use crate::memory::Memory;
 use addressing_modes::AddressingMode;
 
