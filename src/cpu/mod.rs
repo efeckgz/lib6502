@@ -481,4 +481,46 @@ mod tests {
         assert!(!cpu.flag_raised(FlagBitPos::Negative));
         assert!(!cpu.flag_raised(FlagBitPos::Zero));
     }
+
+    #[test]
+    fn asl_works() {
+        let memory = Mem::new();
+        let mut cpu = CPU::new(memory);
+
+        let mut program = [0; 2048];
+
+        // Load the accumulator with some value to left shift
+        // Load 0x15, when left shifted should be 0x2A.
+        program[0] = 0xA9_u8;
+        program[1] = 0x15_u8;
+
+        // Left shift test
+        program[2] = 0x0A_u8;
+
+        cpu.load_program(&program);
+        cpu.run_for(2);
+
+        assert_eq!(cpu.a, 0x2A);
+        assert!(!cpu.flag_raised(FlagBitPos::Carry)); // Carry should not be set
+        assert!(!cpu.flag_raised(FlagBitPos::Zero)); // Zero should not be set
+        assert!(!cpu.flag_raised(FlagBitPos::Negative)); // The result is not negative
+
+        let memory = Mem::new();
+        let mut cpu = CPU::from_pc(0x0000, memory);
+        let mut program = [0; 2048];
+
+        // Full address will be 0x0610
+        let lo = 0x10;
+        let hi = 0x06;
+
+        program[0] = 0x0E_u8;
+        program[1] = lo;
+        program[2] = hi;
+        program[0x0610] = 0x15_u8; // Left shifted should be 0x2A
+
+        cpu.load_program(&program);
+        cpu.run_for(1);
+
+        assert_eq!(cpu.memory.read_byte(0x0610), 0x2A);
+    }
 }
