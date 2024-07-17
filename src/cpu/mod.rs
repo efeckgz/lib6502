@@ -198,6 +198,14 @@ impl<M: Memory + 'static> CPU<M> {
         }
     }
 
+    fn asl(&mut self, operand: Option<u16>) {
+        if let Some(actual_operand) = operand {
+            // Addressing mode exists
+        } else {
+            // Accumulator addressing
+        }
+    }
+
     fn lda(&mut self, operand: Option<u16>) {
         if let Some(actual_operand) = operand {
             let val = self.memory.read_byte(actual_operand);
@@ -379,7 +387,6 @@ mod tests {
         cpu.reset(0x0000);
 
         // (Indirect, X) addresing
-
     }
 
     #[test]
