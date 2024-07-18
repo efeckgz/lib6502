@@ -1,7 +1,5 @@
 pub mod addressing_modes;
 
-use core::mem::zeroed;
-
 use crate::memory::Memory;
 use addressing_modes::AddressingMode;
 
@@ -664,5 +662,29 @@ mod tests {
         cpu.run_for(3);
 
         assert_eq!(cpu.a, 0x42);
+    }
+
+    #[test]
+    fn bit_works() {
+        let memory = Mem::new();
+        let mut cpu = CPU::from_pc(0x0000, memory);
+        let mut program = [0; 2048];
+
+        // Load Accumulator 0xAA, 1010 1010 in binary.
+        // Load memory 0x55, 0101 0101 in binary.
+        // The result of the AND will be 0x00, 0000 0000 in binary.
+        // The zero flag will be set, overflow flag will be set, negative flag will not be set.
+        program[0] = 0xA9_u8; // LDA
+        program[1] = 0xAA_u8; // LDA 0xAA
+        program[2] = 0x24_u8; // BIT Zero Page
+        program[3] = 0xAA_u8; // The operand is in zero page address 0x00AA
+        program[170] = 0x55_u8; // Load the memory with 0x55
+
+        cpu.load_program(&program);
+        cpu.run_for(2);
+
+        assert!(cpu.flag_raised(FlagBitPos::Zero)); // zero flag must be set.
+        assert!(cpu.flag_raised(FlagBitPos::Overflow)); // overflow flag must be set.
+        assert!(!cpu.flag_raised(FlagBitPos::Negative)); // negative flag must be not set.
     }
 }
