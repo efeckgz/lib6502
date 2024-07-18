@@ -235,7 +235,8 @@ impl<M: Memory + 'static> CPU<M> {
         self.pc = branch_to as u16;
     }
 
-    fn bcc(&mut self, operand: Option<u16>) {
+    // Second argument is passed in as per self.decode return type requirement an is unnecessary here.
+    fn bcc(&mut self, _: Option<u16>) {
         if !self.flag_raised(FlagBitPos::Carry) {
             self.branch_general();
         }
