@@ -1,5 +1,7 @@
 pub mod addressing_modes;
 
+use core::mem::zeroed;
+
 use crate::memory::Memory;
 use addressing_modes::AddressingMode;
 
@@ -132,6 +134,10 @@ impl<M: Memory + 'static> CPU<M> {
             // BEQ
             0xF0 => (CPU::beq, AddressingMode::Relative),
 
+            // BIT
+            0x24 => (CPU::bit, AddressingMode::ZeroPage),
+            0x2C => (CPU::bit, AddressingMode::Absolute),
+
             // LDA
             0xA9 => (CPU::lda, AddressingMode::Immediate),
             0xA5 => (CPU::lda, AddressingMode::ZeroPage),
@@ -259,6 +265,21 @@ impl<M: Memory + 'static> CPU<M> {
     fn beq(&mut self, _: Option<u16>) {
         if self.flag_raised(FlagBitPos::Zero) {
             self.branch_general();
+        }
+    }
+
+    fn bit(&mut self, operand: Option<u16>) {
+        if let Some(actual_operand) = operand {
+            let mask = self.a;
+            let value = self.memory.read_byte(actual_operand);
+            let result = value & mask;
+
+            let bit_6 = (value & (1 << 6)) >> 6;
+
+            // set the flags
+            self.set_flag(FlagBitPos::Zero, result == 0);
+            self.set_flag(FlagBitPos::Overflow, bit_6 == 1);
+            self.set_flag(FlagBitPos::Negative, (value as i8) < 0);
         }
     }
 
