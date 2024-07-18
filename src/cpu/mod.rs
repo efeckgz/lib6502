@@ -156,7 +156,6 @@ impl<M: Memory + 'static> CPU<M> {
 
     pub fn execute(&mut self, operation: InstructionExecuter<M>, mode: AddressingMode) {
         let operand = self.decode_operand(mode);
-        // println!("PC after decode: {0:#04x}", self.pc);
         operation(self, operand); // Unwrap is safe to use here because in cases where operand is None there is no need for it anyway.
     }
 
@@ -172,8 +171,6 @@ impl<M: Memory + 'static> CPU<M> {
         if let Some(actual_operand) = operand {
             let a = self.a;
             let to_add = self.memory.read_byte(actual_operand);
-            // println!("operand: {operand:#04x}");
-            // println!("to add: {to_add:#04x}");
 
             let (mut result, mut did_overflow) = a.overflowing_add(to_add);
             if self.flag_raised(FlagBitPos::Carry) {
@@ -539,5 +536,43 @@ mod tests {
         cpu.run_for(1);
 
         assert_eq!(cpu.memory.read_byte(0x0610), 0x2A);
+    }
+
+    #[test]
+    fn bcc_works() {
+        let memory = Mem::new();
+        let mut cpu = CPU::new(memory);
+        cpu.reset(0x0000);
+        let mut program = [0; 2048];
+
+        // Do an operation that sets the carry flag
+        // Load Accumulator 0xFF, and then add Accumulator 0x01
+        program[0] = 0xA9_u8; // LDA
+        program[1] = 0xFF_u8; // LDA 0xFF
+        program[2] = 0x69_u8; // ADC
+        program[3] = 0x01_u8; // ADC 0x01
+
+        // Now do an operation that clears the carry flag
+        // Load accumulator 0x01, and then  add Accumulator 0x01
+        program[4] = 0xA9_u8; // LDA
+        program[5] = 0x01_u8; // LDA 0x01
+        program[6] = 0x69_u8; // ADC
+        program[7] = 0x01_u8; // ADC 0x01
+
+        // Carry flag is set and cleared, branch to 0x0700
+        // Run a simple LDA to verify the branch was successful
+        program[8] = 0x90_u8; // BCC
+        program[9] = 0x01_u8; // offset 0x01, current pc 0x10, should branch to 0x11
+        program[11] = 0xA9_u8; // LDA
+        program[12] = 0x42_u8; // LDA 0x42
+
+        // Now branch back to the start of the program.
+        program[13] = 0x90_u8; // BCC
+        program[14] = (!0xF + 1) as u8; // offset should be -15, current pc 15, should branch to 0x00
+
+        cpu.load_program(&program);
+        cpu.run_for(9);
+
+        assert_eq!(cpu.a, 0x00);
     }
 }
