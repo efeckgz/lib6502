@@ -129,6 +129,9 @@ impl<M: Memory + 'static> CPU<M> {
             // BCS
             0xB0 => (CPU::bcs, AddressingMode::Relative),
 
+            // BEQ
+            0xF0 => (CPU::beq, AddressingMode::Relative),
+
             // LDA
             0xA9 => (CPU::lda, AddressingMode::Immediate),
             0xA5 => (CPU::lda, AddressingMode::ZeroPage),
@@ -248,6 +251,13 @@ impl<M: Memory + 'static> CPU<M> {
     // Second argument is passed in as per self.decode return type requirement an is unnecessary here.
     fn bcs(&mut self, _: Option<u16>) {
         if self.flag_raised(FlagBitPos::Carry) {
+            self.branch_general();
+        }
+    }
+
+    // Second argument is passed in as per self.decode return type requirement an is unnecessary here.
+    fn beq(&mut self, _: Option<u16>) {
+        if self.flag_raised(FlagBitPos::Zero) {
             self.branch_general();
         }
     }
@@ -613,5 +623,25 @@ mod tests {
 
         assert_eq!(cpu.a, 0x42);
         assert!(cpu.flag_raised(FlagBitPos::Carry));
+    }
+
+    #[test]
+    fn beq_works() {
+        let memory = Mem::new();
+        let mut cpu = CPU::from_pc(0x0000, memory);
+        let mut program = [0; 2048];
+
+        // Load Accumulator 0. This will set the 0 flag.
+        program[0] = 0xA9_u8; // LDA
+        program[1] = 0x00_u8; // LDA 0
+        program[2] = 0xF0_u8; // BEQ
+        program[3] = 0x01_u8; // offset 0x01, pc at 0x0604, should branch to 0x0605.
+        program[5] = 0xA9_u8; // LDA
+        program[6] = 0x42_u8; // LDA 0x42
+
+        cpu.load_program(&program);
+        cpu.run_for(3);
+
+        assert_eq!(cpu.a, 0x42);
     }
 }
