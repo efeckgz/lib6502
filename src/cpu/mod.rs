@@ -228,10 +228,19 @@ impl<M: Memory + 'static> CPU<M> {
         }
     }
 
+    // branch_general handles the general branching logic.
+    // It reads the memory at program counter to get the signed branching offset and
+    // branches to the address pc + offset. This is only called within conditional branching functions.
+    fn branch_general(&mut self) {
+        let offset = self.read_and_inc_pc() as i8;
+        let pc = self.pc as i16;
+        let branch_to = pc.wrapping_add(offset as i16);
+        self.pc = branch_to as u16;
+    }
+
     fn bcc(&mut self, operand: Option<u16>) {
         if !self.flag_raised(FlagBitPos::Carry) {
-            let offset = self.read_and_inc_pc();
-            // Find a way to add the i8 offset to the u16 pc
+            self.branch_general();
         }
     }
 
