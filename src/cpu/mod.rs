@@ -123,6 +123,9 @@ impl<M: Memory + 'static> CPU<M> {
             0x0E => (CPU::asl, AddressingMode::Absolute),
             0x1E => (CPU::asl, AddressingMode::AbsoluteX),
 
+            // BCC
+            0x90 => (CPU::bcc, AddressingMode::Relative),
+
             // LDA
             0xA9 => (CPU::lda, AddressingMode::Immediate),
             0xA5 => (CPU::lda, AddressingMode::ZeroPage),
@@ -222,6 +225,13 @@ impl<M: Memory + 'static> CPU<M> {
             self.set_flag(FlagBitPos::Carry, shifted_out == 1);
             self.set_flag(FlagBitPos::Zero, self.a == 0);
             self.set_flag(FlagBitPos::Negative, (self.a as i8) < 0);
+        }
+    }
+
+    fn bcc(&mut self, operand: Option<u16>) {
+        if !self.flag_raised(FlagBitPos::Carry) {
+            let offset = self.read_and_inc_pc();
+            // Find a way to add the i8 offset to the u16 pc
         }
     }
 
