@@ -139,6 +139,12 @@ impl<M: Memory + 'static> CPU<M> {
             // BMI
             0x30 => (CPU::bmi, AddressingMode::Relative),
 
+            // BNE
+            0xD0 => (CPU::bne, AddressingMode::Relative),
+
+            // BPL
+            0x10 => (CPU::bpl, AddressingMode::Relative),
+
             // LDA
             0xA9 => (CPU::lda, AddressingMode::Immediate),
             0xA5 => (CPU::lda, AddressingMode::ZeroPage),
@@ -286,6 +292,18 @@ impl<M: Memory + 'static> CPU<M> {
 
     fn bmi(&mut self, _: Option<u16>) {
         if self.flag_raised(FlagBitPos::Negative) {
+            self.branch_general();
+        }
+    }
+
+    fn bne(&mut self, _: Option<u16>) {
+        if !self.flag_raised(FlagBitPos::Zero) {
+            self.branch_general();
+        }
+    }
+
+    fn bpl(&mut self, _: Option<u16>) {
+        if !self.flag_raised(FlagBitPos::Negative) {
             self.branch_general();
         }
     }
