@@ -136,6 +136,9 @@ impl<M: Memory + 'static> CPU<M> {
             0x24 => (CPU::bit, AddressingMode::ZeroPage),
             0x2C => (CPU::bit, AddressingMode::Absolute),
 
+            // BMI
+            0x30 => (CPU::bmi, AddressingMode::Relative),
+
             // LDA
             0xA9 => (CPU::lda, AddressingMode::Immediate),
             0xA5 => (CPU::lda, AddressingMode::ZeroPage),
@@ -245,21 +248,21 @@ impl<M: Memory + 'static> CPU<M> {
         self.pc = branch_to as u16;
     }
 
-    // Second argument is passed in as per self.decode return type requirement an is unnecessary here.
+    // Second argument is passed in as per self.decode return type requirement and is unnecessary here.
     fn bcc(&mut self, _: Option<u16>) {
         if !self.flag_raised(FlagBitPos::Carry) {
             self.branch_general();
         }
     }
 
-    // Second argument is passed in as per self.decode return type requirement an is unnecessary here.
+    // Second argument is passed in as per self.decode return type requirement and is unnecessary here.
     fn bcs(&mut self, _: Option<u16>) {
         if self.flag_raised(FlagBitPos::Carry) {
             self.branch_general();
         }
     }
 
-    // Second argument is passed in as per self.decode return type requirement an is unnecessary here.
+    // Second argument is passed in as per self.decode return type requirement and is unnecessary here.
     fn beq(&mut self, _: Option<u16>) {
         if self.flag_raised(FlagBitPos::Zero) {
             self.branch_general();
@@ -278,6 +281,12 @@ impl<M: Memory + 'static> CPU<M> {
             self.set_flag(FlagBitPos::Zero, result == 0);
             self.set_flag(FlagBitPos::Overflow, bit_6 == 1);
             self.set_flag(FlagBitPos::Negative, (value as i8) < 0);
+        }
+    }
+
+    fn bmi(&mut self, _: Option<u16>) {
+        if self.flag_raised(FlagBitPos::Negative) {
+            self.branch_general();
         }
     }
 
@@ -679,6 +688,24 @@ mod tests {
         program[2] = 0x24_u8; // BIT Zero Page
         program[3] = 0xAA_u8; // The operand is in zero page address 0x00AA
         program[170] = 0x55_u8; // Load the memory with 0x55
+
+        cpu.load_program(&program);
+        cpu.run_for(2);
+
+        assert!(cpu.flag_raised(FlagBitPos::Zero)); // zero flag must be set.
+        assert!(cpu.flag_raised(FlagBitPos::Overflow)); // overflow flag must be set.
+        assert!(!cpu.flag_raised(FlagBitPos::Negative)); // negative flag must be not set.
+
+        // Now run the same exact test, with Absolute addressing this time.
+        cpu.reset(0x0000);
+        program = [0; 2048];
+
+        program[0] = 0xA9_u8; // LDA
+        program[1] = 0xAA_u8; // LDA 0xAA
+        program[2] = 0x2C_u8; // BIT Absolute
+        program[3] = 0xBB_u8; // Lo byte 0xBB
+        program[4] = 0x06_u8; // Hi byte 0x06, absolute address 0x06BB
+        program[1723] = 0x55_u8; // Store 0x55 in the memory address
 
         cpu.load_program(&program);
         cpu.run_for(2);
