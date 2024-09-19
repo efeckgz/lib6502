@@ -248,8 +248,10 @@ impl<M: Memory + 'static> CPU<M> {
     // It reads the memory at program counter to get the signed branching offset and
     // branches to the address pc + offset. This is only called within conditional branching functions.
     fn branch_general(&mut self) {
+        // Cast the offset and pc to signed type to handle backward branching
         let offset = self.read_and_inc_pc() as i8;
         let pc = self.pc as i16;
+
         let branch_to = pc.wrapping_add(offset as i16);
         self.pc = branch_to as u16;
     }
