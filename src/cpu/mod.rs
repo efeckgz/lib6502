@@ -145,6 +145,9 @@ impl<M: Memory + 'static> CPU<M> {
             // BPL
             0x10 => (CPU::bpl, AddressingMode::Relative),
 
+            // BRK
+            0x00 => (CPU::brk, AddressingMode::Implied),
+
             // LDA
             0xA9 => (CPU::lda, AddressingMode::Immediate),
             0xA5 => (CPU::lda, AddressingMode::ZeroPage),
@@ -308,6 +311,11 @@ impl<M: Memory + 'static> CPU<M> {
         if !self.flag_raised(FlagBitPos::Negative) {
             self.branch_general();
         }
+    }
+
+    fn brk(&mut self, _: Option<u16>) {
+        // brk instruction logic
+        // This sets a Break Command flag in the cpu that is currently not implemented in this emulator.
     }
 
     fn lda(&mut self, operand: Option<u16>) {
