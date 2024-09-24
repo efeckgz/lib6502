@@ -325,6 +325,7 @@ impl<M: Memory + 'static> CPU<M> {
     fn brk(&mut self, _: Option<u16>) {
         // brk instruction logic
         // This sets a Break Command flag in the cpu that is currently not implemented in this emulator.
+        todo!("Implement the BRK instruction.")
     }
 
     fn bvc(&mut self, _: Option<u16>) {
