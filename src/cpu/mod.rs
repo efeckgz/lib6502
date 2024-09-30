@@ -157,6 +157,15 @@ impl<M: Memory + 'static> CPU<M> {
             // CLC
             0x18 => (CPU::clc, AddressingMode::Implied),
 
+            // CLD
+            0xD8 => (CPU::cld, AddressingMode::Implied),
+
+            // CLI
+            0x58 => (CPU::cli, AddressingMode::Implied),
+
+            // CLV
+            0xB8 => (CPU::clv, AddressingMode::Implied),
+
             // LDA
             0xA9 => (CPU::lda, AddressingMode::Immediate),
             0xA5 => (CPU::lda, AddressingMode::ZeroPage),
@@ -342,6 +351,18 @@ impl<M: Memory + 'static> CPU<M> {
 
     fn clc(&mut self, _: Option<u16>) {
         self.set_flag(FlagBitPos::Carry, false); // Explicitly clear the carry flag
+    }
+
+    fn cld(&mut self, _: Option<u16>) {
+        self.set_flag(FlagBitPos::Decimal, false); // Explicitly clear the decimal flag
+    }
+
+    fn cli(&mut self, _: Option<u16>) {
+        self.set_flag(FlagBitPos::InterrputDisable, false); // Explicitly clear the interrupt disable flag
+    }
+
+    fn clv(&mut self, _: Option<u16>) {
+        self.set_flag(FlagBitPos::Overflow, false); // Explicitly clear the overflow flag
     }
 
     fn lda(&mut self, operand: Option<u16>) {
