@@ -3,7 +3,7 @@ pub mod addressing_modes;
 use crate::memory::Memory;
 use addressing_modes::AddressingMode;
 
-pub enum FlagBitPos {
+pub enum Flags {
     Carry = 0,
     Zero = 1,
     InterrputDisable = 2,
@@ -70,12 +70,12 @@ impl<M: Memory + 'static> CPU<M> {
     }
 
     // flag_raised returns the raised status of the given flag.
-    pub fn flag_raised(&self, pos: FlagBitPos) -> bool {
+    pub fn flag_raised(&self, pos: Flags) -> bool {
         (self.flag & (1 << pos as u8)) != 0
     }
 
     // set_flag sets or clears the given flag according to the condition.
-    fn set_flag(&mut self, pos: FlagBitPos, condition: bool) {
+    fn set_flag(&mut self, pos: Flags, condition: bool) {
         if condition {
             self.flag |= 1 << pos as u8; // set the flag
         } else {
@@ -213,20 +213,20 @@ impl<M: Memory + 'static> CPU<M> {
             let to_add = self.memory.read_byte(actual_operand);
 
             let (mut result, mut did_overflow) = a.overflowing_add(to_add);
-            if self.flag_raised(FlagBitPos::Carry) {
+            if self.flag_raised(Flags::Carry) {
                 (result, did_overflow) = result.overflowing_add(1); // if the carry flag is set add it.
             }
 
             self.a = result;
 
-            self.set_flag(FlagBitPos::Carry, did_overflow);
-            self.set_flag(FlagBitPos::Zero, self.a == 0);
+            self.set_flag(Flags::Carry, did_overflow);
+            self.set_flag(Flags::Zero, self.a == 0);
             // The sign of both inputs is different than the sign of the output.
             self.set_flag(
-                FlagBitPos::Overflow,
+                Flags::Overflow,
                 ((self.a ^ result) & (to_add ^ result) & 0x80) != 0,
             );
-            self.set_flag(FlagBitPos::Negative, (self.a as i8) < 0);
+            self.set_flag(Flags::Negative, (self.a as i8) < 0);
         }
     }
 
@@ -237,8 +237,8 @@ impl<M: Memory + 'static> CPU<M> {
             let result = val & a;
             self.a = result;
 
-            self.set_flag(FlagBitPos::Negative, (result as i8) < 0);
-            self.set_flag(FlagBitPos::Zero, result == 0);
+            self.set_flag(Flags::Negative, (result as i8) < 0);
+            self.set_flag(Flags::Zero, result == 0);
         }
     }
 
@@ -250,18 +250,18 @@ impl<M: Memory + 'static> CPU<M> {
             self.memory.write_byte(actual_operand, value);
 
             // Set the flags
-            self.set_flag(FlagBitPos::Carry, shifted_out == 1);
-            self.set_flag(FlagBitPos::Zero, value == 0);
-            self.set_flag(FlagBitPos::Negative, (value as i8) < 0);
+            self.set_flag(Flags::Carry, shifted_out == 1);
+            self.set_flag(Flags::Zero, value == 0);
+            self.set_flag(Flags::Negative, (value as i8) < 0);
         } else {
             // Accumulator addressing
             let shifted_out = self.a >> 7; // Bit 7 is shifted out
             self.a <<= 1; // Left shift the accumulator
 
             // Set the flags
-            self.set_flag(FlagBitPos::Carry, shifted_out == 1);
-            self.set_flag(FlagBitPos::Zero, self.a == 0);
-            self.set_flag(FlagBitPos::Negative, (self.a as i8) < 0);
+            self.set_flag(Flags::Carry, shifted_out == 1);
+            self.set_flag(Flags::Zero, self.a == 0);
+            self.set_flag(Flags::Negative, (self.a as i8) < 0);
         }
     }
 
@@ -279,21 +279,21 @@ impl<M: Memory + 'static> CPU<M> {
 
     // Second argument is passed in as per self.decode return type requirement and is unnecessary here.
     fn bcc(&mut self, _: Option<u16>) {
-        if !self.flag_raised(FlagBitPos::Carry) {
+        if !self.flag_raised(Flags::Carry) {
             self.branch_general();
         }
     }
 
     // Second argument is passed in as per self.decode return type requirement and is unnecessary here.
     fn bcs(&mut self, _: Option<u16>) {
-        if self.flag_raised(FlagBitPos::Carry) {
+        if self.flag_raised(Flags::Carry) {
             self.branch_general();
         }
     }
 
     // Second argument is passed in as per self.decode return type requirement and is unnecessary here.
     fn beq(&mut self, _: Option<u16>) {
-        if self.flag_raised(FlagBitPos::Zero) {
+        if self.flag_raised(Flags::Zero) {
             self.branch_general();
         }
     }
@@ -307,26 +307,26 @@ impl<M: Memory + 'static> CPU<M> {
             let bit_6 = (value & (1 << 6)) >> 6;
 
             // set the flags
-            self.set_flag(FlagBitPos::Zero, result == 0);
-            self.set_flag(FlagBitPos::Overflow, bit_6 == 1);
-            self.set_flag(FlagBitPos::Negative, (value as i8) < 0);
+            self.set_flag(Flags::Zero, result == 0);
+            self.set_flag(Flags::Overflow, bit_6 == 1);
+            self.set_flag(Flags::Negative, (value as i8) < 0);
         }
     }
 
     fn bmi(&mut self, _: Option<u16>) {
-        if self.flag_raised(FlagBitPos::Negative) {
+        if self.flag_raised(Flags::Negative) {
             self.branch_general();
         }
     }
 
     fn bne(&mut self, _: Option<u16>) {
-        if !self.flag_raised(FlagBitPos::Zero) {
+        if !self.flag_raised(Flags::Zero) {
             self.branch_general();
         }
     }
 
     fn bpl(&mut self, _: Option<u16>) {
-        if !self.flag_raised(FlagBitPos::Negative) {
+        if !self.flag_raised(Flags::Negative) {
             self.branch_general();
         }
     }
@@ -338,31 +338,31 @@ impl<M: Memory + 'static> CPU<M> {
     }
 
     fn bvc(&mut self, _: Option<u16>) {
-        if !self.flag_raised(FlagBitPos::Overflow) {
+        if !self.flag_raised(Flags::Overflow) {
             self.branch_general();
         }
     }
 
     fn bvs(&mut self, _: Option<u16>) {
-        if self.flag_raised(FlagBitPos::Overflow) {
+        if self.flag_raised(Flags::Overflow) {
             self.branch_general();
         }
     }
 
     fn clc(&mut self, _: Option<u16>) {
-        self.set_flag(FlagBitPos::Carry, false); // Explicitly clear the carry flag
+        self.set_flag(Flags::Carry, false); // Explicitly clear the carry flag
     }
 
     fn cld(&mut self, _: Option<u16>) {
-        self.set_flag(FlagBitPos::Decimal, false); // Explicitly clear the decimal flag
+        self.set_flag(Flags::Decimal, false); // Explicitly clear the decimal flag
     }
 
     fn cli(&mut self, _: Option<u16>) {
-        self.set_flag(FlagBitPos::InterrputDisable, false); // Explicitly clear the interrupt disable flag
+        self.set_flag(Flags::InterrputDisable, false); // Explicitly clear the interrupt disable flag
     }
 
     fn clv(&mut self, _: Option<u16>) {
-        self.set_flag(FlagBitPos::Overflow, false); // Explicitly clear the overflow flag
+        self.set_flag(Flags::Overflow, false); // Explicitly clear the overflow flag
     }
 
     fn lda(&mut self, operand: Option<u16>) {
@@ -371,8 +371,8 @@ impl<M: Memory + 'static> CPU<M> {
             self.a = val;
 
             // Set the status flags
-            self.set_flag(FlagBitPos::Negative, (val as i8) < 0);
-            self.set_flag(FlagBitPos::Zero, val == 0);
+            self.set_flag(Flags::Negative, (val as i8) < 0);
+            self.set_flag(Flags::Zero, val == 0);
         }
     }
 
@@ -382,8 +382,8 @@ impl<M: Memory + 'static> CPU<M> {
             self.x = val;
 
             // Set the status flags
-            self.set_flag(FlagBitPos::Negative, (val as i8) < 0);
-            self.set_flag(FlagBitPos::Zero, val == 0);
+            self.set_flag(Flags::Negative, (val as i8) < 0);
+            self.set_flag(Flags::Zero, val == 0);
         }
     }
 
@@ -393,8 +393,8 @@ impl<M: Memory + 'static> CPU<M> {
             self.y = val;
 
             // Set the status flags
-            self.set_flag(FlagBitPos::Negative, (val as i8) < 0);
-            self.set_flag(FlagBitPos::Zero, val == 0);
+            self.set_flag(Flags::Negative, (val as i8) < 0);
+            self.set_flag(Flags::Zero, val == 0);
         }
     }
 }
@@ -454,8 +454,8 @@ mod tests {
         cpu.load_program(&program);
         cpu.run_for(1);
         assert_eq!(cpu.a, 0x42);
-        assert!(!cpu.flag_raised(FlagBitPos::Zero));
-        assert!(!cpu.flag_raised(FlagBitPos::Negative));
+        assert!(!cpu.flag_raised(Flags::Zero));
+        assert!(!cpu.flag_raised(Flags::Negative));
 
         cpu.reset(0x0000);
 
@@ -476,8 +476,8 @@ mod tests {
         cpu.run_for(2);
 
         assert_eq!(cpu.a, 0x42);
-        assert!(!cpu.flag_raised(FlagBitPos::Zero));
-        assert!(!cpu.flag_raised(FlagBitPos::Negative));
+        assert!(!cpu.flag_raised(Flags::Zero));
+        assert!(!cpu.flag_raised(Flags::Negative));
 
         cpu.reset(0x0000);
 
@@ -582,8 +582,8 @@ mod tests {
         cpu.run_for(1);
 
         assert_eq!(cpu.a, 0x00);
-        assert!(!cpu.flag_raised(FlagBitPos::Negative));
-        assert!(cpu.flag_raised(FlagBitPos::Zero));
+        assert!(!cpu.flag_raised(Flags::Negative));
+        assert!(cpu.flag_raised(Flags::Zero));
     }
 
     #[test]
@@ -599,8 +599,8 @@ mod tests {
         cpu.run_for(1);
 
         assert_eq!(cpu.x, 0x24);
-        assert!(!cpu.flag_raised(FlagBitPos::Negative));
-        assert!(!cpu.flag_raised(FlagBitPos::Zero));
+        assert!(!cpu.flag_raised(Flags::Negative));
+        assert!(!cpu.flag_raised(Flags::Zero));
     }
 
     #[test]
@@ -616,8 +616,8 @@ mod tests {
         cpu.run_for(1);
 
         assert_eq!(cpu.y, 0x24);
-        assert!(!cpu.flag_raised(FlagBitPos::Negative));
-        assert!(!cpu.flag_raised(FlagBitPos::Zero));
+        assert!(!cpu.flag_raised(Flags::Negative));
+        assert!(!cpu.flag_raised(Flags::Zero));
     }
 
     #[test]
@@ -639,9 +639,9 @@ mod tests {
         cpu.run_for(2);
 
         assert_eq!(cpu.a, 0x2A);
-        assert!(!cpu.flag_raised(FlagBitPos::Carry)); // Carry should not be set
-        assert!(!cpu.flag_raised(FlagBitPos::Zero)); // Zero should not be set
-        assert!(!cpu.flag_raised(FlagBitPos::Negative)); // The result is not negative
+        assert!(!cpu.flag_raised(Flags::Carry)); // Carry should not be set
+        assert!(!cpu.flag_raised(Flags::Zero)); // Zero should not be set
+        assert!(!cpu.flag_raised(Flags::Negative)); // The result is not negative
 
         let memory = Mem::new();
         let mut cpu = CPU::from_pc(0x0000, memory);
@@ -725,7 +725,7 @@ mod tests {
         cpu.run_for(4);
 
         assert_eq!(cpu.a, 0x42);
-        assert!(cpu.flag_raised(FlagBitPos::Carry));
+        assert!(cpu.flag_raised(Flags::Carry));
     }
 
     #[test]
@@ -767,9 +767,9 @@ mod tests {
         cpu.load_program(&program);
         cpu.run_for(2);
 
-        assert!(cpu.flag_raised(FlagBitPos::Zero)); // zero flag must be set.
-        assert!(cpu.flag_raised(FlagBitPos::Overflow)); // overflow flag must be set.
-        assert!(!cpu.flag_raised(FlagBitPos::Negative)); // negative flag must be not set.
+        assert!(cpu.flag_raised(Flags::Zero)); // zero flag must be set.
+        assert!(cpu.flag_raised(Flags::Overflow)); // overflow flag must be set.
+        assert!(!cpu.flag_raised(Flags::Negative)); // negative flag must be not set.
 
         // Now run the same exact test, with Absolute addressing this time.
         cpu.reset(0x0000);
@@ -785,8 +785,8 @@ mod tests {
         cpu.load_program(&program);
         cpu.run_for(2);
 
-        assert!(cpu.flag_raised(FlagBitPos::Zero)); // zero flag must be set.
-        assert!(cpu.flag_raised(FlagBitPos::Overflow)); // overflow flag must be set.
-        assert!(!cpu.flag_raised(FlagBitPos::Negative)); // negative flag must be not set.
+        assert!(cpu.flag_raised(Flags::Zero)); // zero flag must be set.
+        assert!(cpu.flag_raised(Flags::Overflow)); // overflow flag must be set.
+        assert!(!cpu.flag_raised(Flags::Negative)); // negative flag must be not set.
     }
 }
