@@ -166,6 +166,26 @@ impl<M: Memory + 'static> CPU<M> {
             // CLV
             0xB8 => (CPU::clv, AddressingMode::Implied),
 
+            // CMP
+            0xC9 => (CPU::cmp, AddressingMode::Immediate),
+            0xC5 => (CPU::cmp, AddressingMode::ZeroPage),
+            0xD5 => (CPU::cmp, AddressingMode::ZeroPageX),
+            0xCD => (CPU::cmp, AddressingMode::Absolute),
+            0xDD => (CPU::cmp, AddressingMode::AbsoluteX),
+            0xD9 => (CPU::cmp, AddressingMode::AbsoluteY),
+            0xC1 => (CPU::cmp, AddressingMode::IndirectX),
+            0xD1 => (CPU::cmp, AddressingMode::IndirectY),
+
+            // CPX
+            0xE0 => (CPU::cpx, AddressingMode::Immediate),
+            0xE4 => (CPU::cpx, AddressingMode::ZeroPage),
+            0xEC => (CPU::cpx, AddressingMode::Absolute),
+
+            // CPY
+            0xC0 => (CPU::cpy, AddressingMode::Immediate),
+            0xC4 => (CPU::cpy, AddressingMode::ZeroPage),
+            0xCC => (CPU::cpy, AddressingMode::Absolute),
+
             // LDA
             0xA9 => (CPU::lda, AddressingMode::Immediate),
             0xA5 => (CPU::lda, AddressingMode::ZeroPage),
@@ -363,6 +383,39 @@ impl<M: Memory + 'static> CPU<M> {
 
     fn clv(&mut self, _: Option<u16>) {
         self.set_flag(Flags::Overflow, false); // Explicitly clear the overflow flag
+    }
+
+    fn cmp(&mut self, operand: Option<u16>) {
+        if let Some(actual_operand) = operand {
+            let val = self.memory.read_byte(actual_operand);
+            let (result, _) = self.a.overflowing_sub(val);
+
+            self.set_flag(Flags::Carry, self.a >= val);
+            self.set_flag(Flags::Zero, self.a == val);
+            self.set_flag(Flags::Negative, (result as i8) < 0);
+        }
+    }
+
+    fn cpx(&mut self, operand: Option<u16>) {
+        if let Some(actual_operand) = operand {
+            let val = self.memory.read_byte(actual_operand);
+            let (result, _) = self.x.overflowing_sub(val);
+
+            self.set_flag(Flags::Carry, self.x >= val);
+            self.set_flag(Flags::Zero, self.x == val);
+            self.set_flag(Flags::Negative, (result as i8) < 0);
+        }
+    }
+
+    fn cpy(&mut self, operand: Option<u16>) {
+        if let Some(actual_operand) = operand {
+            let val = self.memory.read_byte(actual_operand);
+            let (result, _) = self.y.overflowing_sub(val);
+
+            self.set_flag(Flags::Carry, self.y >= val);
+            self.set_flag(Flags::Zero, self.y == val);
+            self.set_flag(Flags::Negative, (result as i8) < 0);
+        }
     }
 
     fn lda(&mut self, operand: Option<u16>) {
