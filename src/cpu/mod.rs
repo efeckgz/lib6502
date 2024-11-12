@@ -1,5 +1,7 @@
 pub mod addressing_modes;
 
+use core::net::AddrParseError;
+
 use crate::memory::Memory;
 use addressing_modes::AddressingMode;
 
@@ -185,6 +187,12 @@ impl<M: Memory + 'static> CPU<M> {
             0xC0 => (CPU::cpy, AddressingMode::Immediate),
             0xC4 => (CPU::cpy, AddressingMode::ZeroPage),
             0xCC => (CPU::cpy, AddressingMode::Absolute),
+
+            // DEC
+            0xC6 => (CPU::dec, AddressingMode::ZeroPage),
+            0xD6 => (CPU::dec, AddressingMode::ZeroPageX),
+            0xCE => (CPU::dec, AddressingMode::Absolute),
+            0xDE => (CPU::dec, AddressingMode::AbsoluteX),
 
             // LDA
             0xA9 => (CPU::lda, AddressingMode::Immediate),
@@ -414,6 +422,18 @@ impl<M: Memory + 'static> CPU<M> {
 
             self.set_flag(Flags::Carry, self.y >= val);
             self.set_flag(Flags::Zero, self.y == val);
+            self.set_flag(Flags::Negative, (result as i8) < 0);
+        }
+    }
+
+    fn dec(&mut self, operand: Option<u16>) {
+        if let Some(actual_operand) = operand {
+            let val = self.memory.read_byte(actual_operand);
+            let result = val - 1;
+            self.memory.write_byte(actual_operand, result); // Write the result back to the same mem address
+
+            // Negative and Zero flags set accordingly
+            self.set_flag(Flags::Zero, result == 0);
             self.set_flag(Flags::Negative, (result as i8) < 0);
         }
     }
