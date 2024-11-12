@@ -1,7 +1,5 @@
 pub mod addressing_modes;
 
-use core::net::AddrParseError;
-
 use crate::memory::Memory;
 use addressing_modes::AddressingMode;
 
@@ -861,5 +859,27 @@ mod tests {
         assert!(cpu.flag_raised(Flags::Zero)); // zero flag must be set.
         assert!(cpu.flag_raised(Flags::Overflow)); // overflow flag must be set.
         assert!(!cpu.flag_raised(Flags::Negative)); // negative flag must be not set.
+    }
+
+    #[test]
+    fn dec_works() {
+        let memory = Mem::new();
+        let mut cpu = CPU::from_pc(0x0, memory);
+        let mut program = [0; 2048];
+
+        // Hard code this into memory and test DEC on that address.
+        let test_value: u8 = 42;
+        let test_adress: u8 = 0xAA;
+
+        program[0] = 0xC6; // Zero Page DEC
+        program[1] = test_adress; // Operand in address 0xAA (170)
+        program[test_adress as usize] = test_value;
+
+        cpu.load_program(&program);
+        cpu.run_for(1);
+
+        assert!(cpu.memory.bytes[test_adress as usize] == test_value - 1);
+        assert!(!cpu.flag_raised(Flags::Zero));
+        assert!(!cpu.flag_raised(Flags::Negative));
     }
 }
