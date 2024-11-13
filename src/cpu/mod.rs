@@ -931,35 +931,35 @@ mod tests {
 
     #[test]
     fn eor_works() {
-        // Test the EOR instruction with absolute x addressing.
+        // Test EOR instruction with Absolute X mode.
         let memory = Mem::new();
-        let mut cpu = CPU::new(memory);
-        let mut program = [0; 2048];
+        let mut cpu = CPU::from_pc(0x0, memory);
+        let mut program = [0; MEMSIZE];
 
-        let orig_a = 0x42_u8;
-        let orig_val = 0x12_u8; // xor this value with accumulator
+        // Starting values for the accumulator and memory address.
+        // In the end the accumulator should be 0xFF.
+        let orig_a = 0xF0_u8;
+        let orig_val = 0x0F_u8;
 
-        // Load X with an index
-        program[0] = 0xA2_u8; // Immidiate LDX
-        program[1] = 0x10_u8; // Load X hex 10
+        // Load x with an initial index.
+        program[0] = 0xA2_u8; // Immidiate ldx
+        program[1] = 0x11_u8; // Load X 0x11.
 
-        // Load A with a value to xor
-        program[2] = 0xA9_u8; // Immidiate LDA
-        program[3] = orig_a;
+        // Load Accumulator with initial value.
+        program[2] = 0xA9_u8; // Immidiate lda
+        program[3] = orig_a; // Load A 0xF0
 
-        // Hard code the value to be xored into 0x1244
-        program[0x644] = orig_val; // Program loading starts at 0x600
-
-        // Absolute X addressing EOR instruction
-        program[4] = 0x5D_u8;
-        program[5] = 0x34_u8;
-        program[6] = 0x12_u8;
+        // Absolute address will be 0x1122, with X it will be 0x1133.
+        program[4] = 0x5D_u8; // Absolute X addressing eor
+        program[5] = 0x22_u8; // Lo byte
+        program[6] = 0x11_u8; // Hi byte
+        program[0x1133] = orig_val; // Load the original value at the designated memory address.
 
         cpu.load_program(&program);
         cpu.run_for(3);
 
-        assert_eq!(cpu.a, orig_a ^ orig_val);
-        assert_eq!(cpu.flag_raised(Flags::Zero), false);
-        assert_eq!(cpu.flag_raised(Flags::Negative), true);
+        assert_eq!(cpu.a, 0xFF);
+        assert!(!cpu.flag_raised(Flags::Zero)); // Set to false
+        assert!(cpu.flag_raised(Flags::Negative)); // Set to true
     }
 }
