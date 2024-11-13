@@ -192,6 +192,12 @@ impl<M: Memory + 'static> CPU<M> {
             0xCE => (CPU::dec, AddressingMode::Absolute),
             0xDE => (CPU::dec, AddressingMode::AbsoluteX),
 
+            // DEX
+            0xCA => (CPU::dex, AddressingMode::Implied),
+
+            // DEY
+            0x88 => (CPU::dey, AddressingMode::Implied),
+
             // LDA
             0xA9 => (CPU::lda, AddressingMode::Immediate),
             0xA5 => (CPU::lda, AddressingMode::ZeroPage),
@@ -434,6 +440,22 @@ impl<M: Memory + 'static> CPU<M> {
             self.set_flag(Flags::Zero, result == 0);
             self.set_flag(Flags::Negative, (result as i8) < 0);
         }
+    }
+
+    fn dex(&mut self, _: Option<u16>) {
+        self.x -= 1;
+
+        // Set flags
+        self.set_flag(Flags::Zero, self.x == 0);
+        self.set_flag(Flags::Negative, (self.x as i8) < 0);
+    }
+
+    fn dey(&mut self, _: Option<u16>) {
+        self.y -= 1;
+
+        // Set flags
+        self.set_flag(Flags::Zero, self.y == 0);
+        self.set_flag(Flags::Negative, (self.y as i8) < 0);
     }
 
     fn lda(&mut self, operand: Option<u16>) {
