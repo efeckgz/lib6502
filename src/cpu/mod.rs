@@ -469,7 +469,6 @@ impl<M: Memory + 'static> CPU<M> {
     }
 
     fn eor(&mut self, operand: Option<u16>) {
-        std::println!("Here");
         if let Some(actual_operand) = operand {
             let val = self.memory.read_byte(actual_operand);
             let result = self.a ^ val;
@@ -519,9 +518,11 @@ impl<M: Memory + 'static> CPU<M> {
 mod tests {
     use super::*;
 
+    const MEMSIZE: usize = 8192;
+
     #[derive(Debug)]
     struct Mem {
-        pub bytes: [u8; 8192],
+        pub bytes: [u8; MEMSIZE],
     }
 
     impl Memory for Mem {
@@ -534,7 +535,7 @@ mod tests {
         }
 
         fn reset(&mut self) {
-            self.bytes = [0; 8192];
+            self.bytes = [0; MEMSIZE];
         }
     }
 
