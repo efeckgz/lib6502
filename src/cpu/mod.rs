@@ -469,6 +469,7 @@ impl<M: Memory + 'static> CPU<M> {
     }
 
     fn eor(&mut self, operand: Option<u16>) {
+        std::println!("Here");
         if let Some(actual_operand) = operand {
             let val = self.memory.read_byte(actual_operand);
             let result = self.a ^ val;
@@ -520,7 +521,7 @@ mod tests {
 
     #[derive(Debug)]
     struct Mem {
-        pub bytes: [u8; 4096],
+        pub bytes: [u8; 8192],
     }
 
     impl Memory for Mem {
@@ -533,13 +534,13 @@ mod tests {
         }
 
         fn reset(&mut self) {
-            self.bytes = [0; 4096];
+            self.bytes = [0; 8192];
         }
     }
 
     impl Mem {
         fn new() -> Mem {
-            Mem { bytes: [0; 4096] }
+            Mem { bytes: [0; 8192] }
         }
     }
 
@@ -925,5 +926,39 @@ mod tests {
         assert!(cpu.memory.bytes[test_adress as usize] == test_value - 1);
         assert!(!cpu.flag_raised(Flags::Zero));
         assert!(!cpu.flag_raised(Flags::Negative));
+    }
+
+    #[test]
+    fn eor_works() {
+        // Test the EOR instruction with absolute x addressing.
+        let memory = Mem::new();
+        let mut cpu = CPU::new(memory);
+        let mut program = [0; 2048];
+
+        let orig_a = 0x42_u8;
+        let orig_val = 0x12_u8; // xor this value with accumulator
+
+        // Load X with an index
+        program[0] = 0xA2_u8; // Immidiate LDX
+        program[1] = 0x10_u8; // Load X hex 10
+
+        // Load A with a value to xor
+        program[2] = 0xA9_u8; // Immidiate LDA
+        program[3] = orig_a;
+
+        // Hard code the value to be xored into 0x1244
+        program[0x644] = orig_val; // Program loading starts at 0x600
+
+        // Absolute X addressing EOR instruction
+        program[4] = 0x5D_u8;
+        program[5] = 0x34_u8;
+        program[6] = 0x12_u8;
+
+        cpu.load_program(&program);
+        cpu.run_for(3);
+
+        assert_eq!(cpu.a, orig_a ^ orig_val);
+        assert_eq!(cpu.flag_raised(Flags::Zero), false);
+        assert_eq!(cpu.flag_raised(Flags::Negative), true);
     }
 }
