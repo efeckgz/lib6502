@@ -198,6 +198,16 @@ impl<M: Memory + 'static> CPU<M> {
             // DEY
             0x88 => (CPU::dey, AddressingMode::Implied),
 
+            // EOR
+            0x49 => (CPU::eor, AddressingMode::Immediate),
+            0x45 => (CPU::eor, AddressingMode::ZeroPage),
+            0x55 => (CPU::eor, AddressingMode::ZeroPageX),
+            0x4D => (CPU::eor, AddressingMode::Absolute),
+            0x5D => (CPU::eor, AddressingMode::AbsoluteX),
+            0x59 => (CPU::eor, AddressingMode::AbsoluteY),
+            0x41 => (CPU::eor, AddressingMode::IndirectX),
+            0x51 => (CPU::eor, AddressingMode::IndirectY),
+
             // LDA
             0xA9 => (CPU::lda, AddressingMode::Immediate),
             0xA5 => (CPU::lda, AddressingMode::ZeroPage),
@@ -456,6 +466,18 @@ impl<M: Memory + 'static> CPU<M> {
         // Set flags
         self.set_flag(Flags::Zero, self.y == 0);
         self.set_flag(Flags::Negative, (self.y as i8) < 0);
+    }
+
+    fn eor(&mut self, operand: Option<u16>) {
+        if let Some(actual_operand) = operand {
+            let val = self.memory.read_byte(actual_operand);
+            let result = self.a ^ val;
+            self.a = result;
+
+            // Set the flags
+            self.set_flag(Flags::Zero, self.a == 0);
+            self.set_flag(Flags::Negative, (self.a as i8) < 0);
+        }
     }
 
     fn lda(&mut self, operand: Option<u16>) {
