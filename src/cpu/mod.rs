@@ -43,8 +43,6 @@ pub enum AddressingMode {
 enum State {
     FetchOpcode,
     ExecImm,
-    FetchOperand,
-    Execute,
     // Many more states
 }
 
@@ -79,7 +77,7 @@ impl<'a> Cpu<'a> {
                 if let Some(instruction) = LOOKUP[self.data as usize] {
                     match instruction.0 {
                         AddressingMode::Immediate => self.state = State::ExecImm,
-                        _ => self.state = State::FetchOperand, // placeholder default
+                        _ => todo!("Implement remaining states"),
                     }
                 } else {
                     todo!("Implement illegal opcodes!");
@@ -100,20 +98,7 @@ impl<'a> Cpu<'a> {
 
                 self.state = State::FetchOpcode;
             }
-            State::FetchOperand => {
-                self.addr = self.pc;
-                self.read = true;
-                self.access_bus();
-                self.pc = self.pc.wrapping_add(1);
-                self.state = State::Execute;
-            }
-            State::Execute => {
-                self.addr = data_prev as u16;
-                self.read = true;
-                self.access_bus();
-                self.a = self.data;
-                self.state = State::FetchOpcode;
-            }
+            _ => todo!("Implement remaining states!"),
         }
     }
 
@@ -242,7 +227,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn lda(&mut self) {
-        unimplemented!();
+        self.a = self.data;
     }
 
     fn ldx(&mut self) {
@@ -347,9 +332,5 @@ impl<'a> Cpu<'a> {
 
     fn tya(&mut self) {
         unimplemented!();
-    }
-
-    pub fn execute(&mut self) {
-        // self.bus.write(0x00, 0x42);
     }
 }

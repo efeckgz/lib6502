@@ -26,15 +26,6 @@ impl Memory {
     }
 }
 
-pub fn setup() {
-    let mut bus: Bus<1> = Bus::new();
-    let mut memory = Memory::new();
-    bus.map_device(0x00, 0xFF, &mut memory).unwrap();
-
-    let mut cpu = Cpu::new(&mut bus);
-    cpu.execute();
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -43,11 +34,19 @@ mod tests {
     fn it_works() {
         let mut bus: Bus<1> = Bus::new();
         let mut memory = Memory::new();
+
+        // LDA #10
+        memory.bytes[0] = 0xA9; // LDA immediate
+        memory.bytes[1] = 0x0A; // 10 in hex
+
         bus.map_device(0x00, 0xFF, &mut memory).unwrap();
 
         let mut cpu = Cpu::new(&mut bus);
-        cpu.execute();
 
-        assert_eq!(cpu.bus.read(0x00), 0x42);
+        // Run for 2 cycles
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x0A);
     }
 }
