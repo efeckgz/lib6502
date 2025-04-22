@@ -40,10 +40,21 @@ pub enum AddressingMode {
     IndirectY, // (Indirect), Y
 }
 
+// Inner state of the processor, used in state machine.
 enum State {
     FetchOpcode,
     ExecImm,
     // Many more states
+}
+
+// Status flags. Used in the processor status register p.
+pub enum Flags {
+    Carry = 0,
+    Zero = 1,
+    InterrputDisable = 2,
+    Decimal = 3,
+    Overflow = 6,
+    Negative = 7,
 }
 
 impl<'a> Cpu<'a> {
@@ -64,6 +75,7 @@ impl<'a> Cpu<'a> {
         }
     }
 
+    // Emulate 1 cpu cycle.
     pub fn cycle(&mut self) {
         let data_prev = self.data;
         match self.state {
@@ -91,8 +103,18 @@ impl<'a> Cpu<'a> {
 
                 if let Some(instruction) = LOOKUP[self.cur_op as usize] {
                     match instruction.1 {
+                        Nmeonic::ADC => self.adc(),
+                        Nmeonic::AND => self.and(),
+                        Nmeonic::CMP => self.cmp(),
+                        Nmeonic::CPX => self.cpx(),
+                        Nmeonic::CPY => self.cpy(),
+                        Nmeonic::EOR => self.eor(),
                         Nmeonic::LDA => self.lda(),
-                        _ => return,
+                        Nmeonic::LDX => self.ldx(),
+                        Nmeonic::LDY => self.ldy(),
+                        Nmeonic::ORA => self.ora(),
+
+                        _ => panic!("Unrecognized opcode-addressing mode-nmeonic combination!"),
                     }
                 }
 
@@ -110,12 +132,44 @@ impl<'a> Cpu<'a> {
         }
     }
 
+    // Returns the set status of a flag in p register.
+    pub fn flag_set(&self, flag: Flags) -> bool {
+        (self.p & (1 << flag as u8)) != 0
+    }
+
+    // Set the given flag in p register based on a condition.
+    fn set_flag(&mut self, flag: Flags, con: bool) {
+        if con {
+            self.p |= 1 << flag as u8;
+        } else {
+            self.p &= !(1 << flag as u8);
+        }
+    }
+
     fn adc(&mut self) {
-        unimplemented!();
+        let val = self.data;
+        let (mut result, mut overflow) = self.a.overflowing_add(val);
+        if self.flag_set(Flags::Carry) {
+            (result, overflow) = result.overflowing_add(1);
+        }
+        self.a = result;
+
+        // Flags
+        self.set_flag(Flags::Carry, overflow);
+        self.set_flag(Flags::Zero, self.a == 0);
+        self.set_flag(
+            Flags::Overflow,
+            ((self.a ^ result) & (val ^ result) & 0x80) != 0,
+        );
+        self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }
 
     fn and(&mut self) {
-        unimplemented!();
+        self.a ^= self.data;
+
+        // Set flags
+        self.set_flag(Flags::Zero, self.a == 0);
+        self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }
 
     fn asl(&mut self) {
@@ -228,6 +282,10 @@ impl<'a> Cpu<'a> {
 
     fn lda(&mut self) {
         self.a = self.data;
+
+        // Set flags
+        self.set_flag(Flags::Zero, self.a == 0);
+        self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }
 
     fn ldx(&mut self) {
