@@ -147,7 +147,7 @@ impl<'a> Cpu<'a> {
                 self.access_bus();
                 self.pc = self.pc.wrapping_add(1);
                 let hi = self.data as u16;
-                self.latch_u16 = (hi << 8) | hi;
+                self.latch_u16 = (lo << 8) | hi;
 
                 if let Some(ins) = LOOKUP[self.cur_op as usize] {
                     match ins.1 {
@@ -157,6 +157,7 @@ impl<'a> Cpu<'a> {
                             self.jmp();
                             self.state = State::FetchOpcode;
                         }
+                        _ => todo!("Completed absolute addressing mode!"),
                     }
                 }
             }
