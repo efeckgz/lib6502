@@ -21,6 +21,8 @@ pub struct Cpu<'a> {
     pub addr: u16,                  // 16 bit address bus value
     pub data: u8,                   // 8 bit data bus value
     pub read: bool,                 // bus read/write mode control variable
+
+    latch_u16: u16, // Latch to hold the 16 bit effective addr
 }
 
 #[derive(Copy, Clone)]
@@ -44,6 +46,13 @@ pub enum AddressingMode {
 enum State {
     FetchOpcode,
     ExecImm,
+    FetchAbsLo,
+    FetchAbsHi,
+    ExecAbs,
+
+    // Read-Modify-Write states
+    RmwRead,
+    RmwWrite,
     // Many more states
 }
 
@@ -72,6 +81,7 @@ impl<'a> Cpu<'a> {
             addr: 0,
             data: 0,
             read: false,
+            latch_u16: 0,
         }
     }
 
@@ -89,6 +99,7 @@ impl<'a> Cpu<'a> {
                 if let Some(instruction) = LOOKUP[self.data as usize] {
                     match instruction.0 {
                         AddressingMode::Immediate => self.state = State::ExecImm,
+                        AddressingMode::Absolute => self.state = State::FetchAbsLo,
                         _ => todo!("Implement remaining states"),
                     }
                 } else {
@@ -120,6 +131,35 @@ impl<'a> Cpu<'a> {
 
                 self.state = State::FetchOpcode;
             }
+            State::FetchAbsLo => {
+                // Fetch the least significant byte of the effective address
+                self.addr = self.pc;
+                self.read = true;
+                self.access_bus();
+                self.pc = self.pc.wrapping_add(1);
+                self.state = State::FetchAbsHi;
+            }
+            State::FetchAbsHi => {
+                // Fetch the most significant byte of the effective address
+                let lo = self.data as u16; // Data bus contains the least significant byte fetched in the previous cycle
+                self.addr = self.pc;
+                self.read = true;
+                self.access_bus();
+                self.pc = self.pc.wrapping_add(1);
+                let hi = self.data as u16;
+                self.latch_u16 = (hi << 8) | hi;
+
+                if let Some(ins) = LOOKUP[self.cur_op as usize] {
+                    match ins.1 {
+                        Nmeonic::JMP => {
+                            // Absolute JMP is only 3 cycles, there is no foruth cycle to fetch memroy from the effective address.
+                            // pc is set to the effective address and state is back to fetch opcode.
+                            self.jmp();
+                            self.state = State::FetchOpcode;
+                        }
+                    }
+                }
+            }
             _ => todo!("Implement remaining states!"),
         }
     }
@@ -147,6 +187,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn adc(&mut self) {
+        // Currently does not handle bcd mode addition.
         let val = self.data;
         let (mut result, mut overflow) = self.a.overflowing_add(val);
         if self.flag_set(Flags::Carry) {
@@ -233,15 +274,27 @@ impl<'a> Cpu<'a> {
     }
 
     fn cmp(&mut self) {
-        unimplemented!();
+        let result = self.a.wrapping_sub(self.data);
+
+        self.set_flag(Flags::Carry, self.a >= self.data);
+        self.set_flag(Flags::Zero, result == 0);
+        self.set_flag(Flags::Negative, (result as i8) < 0);
     }
 
     fn cpx(&mut self) {
-        unimplemented!();
+        let result = self.x.wrapping_sub(self.data);
+
+        self.set_flag(Flags::Carry, self.x >= self.data);
+        self.set_flag(Flags::Zero, result == 0);
+        self.set_flag(Flags::Negative, (result as i8) < 0);
     }
 
     fn cpy(&mut self) {
-        unimplemented!();
+        let result = self.y.wrapping_sub(self.data);
+
+        self.set_flag(Flags::Carry, self.y >= self.data);
+        self.set_flag(Flags::Zero, result == 0);
+        self.set_flag(Flags::Negative, (result as i8) < 0);
     }
 
     fn dec(&mut self) {
@@ -257,7 +310,10 @@ impl<'a> Cpu<'a> {
     }
 
     fn eor(&mut self) {
-        unimplemented!();
+        self.a ^= self.data;
+
+        self.set_flag(Flags::Zero, self.a == 0);
+        self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }
 
     fn inc(&mut self) {
@@ -273,7 +329,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn jmp(&mut self) {
-        unimplemented!();
+        self.pc = self.latch_u16;
     }
 
     fn jsr(&mut self) {
@@ -289,11 +345,17 @@ impl<'a> Cpu<'a> {
     }
 
     fn ldx(&mut self) {
-        unimplemented!();
+        self.x = self.data;
+
+        self.set_flag(Flags::Zero, self.x == 0);
+        self.set_flag(Flags::Negative, (self.x as i8) < 0);
     }
 
     fn ldy(&mut self) {
-        unimplemented!();
+        self.y = self.data;
+
+        self.set_flag(Flags::Zero, self.y == 0);
+        self.set_flag(Flags::Negative, (self.y as i8) < 0);
     }
 
     fn lsr(&mut self) {
@@ -305,7 +367,10 @@ impl<'a> Cpu<'a> {
     }
 
     fn ora(&mut self) {
-        unimplemented!();
+        self.a |= self.data;
+
+        self.set_flag(Flags::Zero, self.a == 0);
+        self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }
 
     fn pha(&mut self) {
