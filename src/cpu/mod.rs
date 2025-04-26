@@ -44,8 +44,9 @@ pub enum AddressingMode {
 
 // Inner state of the processor, used in state machine.
 enum State {
-    FetchOpcode,
-    ExecImm,
+    FetchOpcode, // Fetch opcode state. Every instruction starts here.
+    ExecImm,     // Immediate addressing mode execution state
+    ExecAcc,     // Accumulator addressing mode execution state
     FetchAbsLo,
     FetchAbsHi,
     ExecAbs,
@@ -98,6 +99,7 @@ impl<'a> Cpu<'a> {
                 self.cur_op = self.data;
                 if let Some(instruction) = LOOKUP[self.data as usize] {
                     match instruction.0 {
+                        AddressingMode::Accumulator => self.state = State::ExecAcc,
                         AddressingMode::Immediate => self.state = State::ExecImm,
                         AddressingMode::Absolute => self.state = State::FetchAbsLo,
                         _ => todo!("Implement remaining states"),
@@ -130,6 +132,21 @@ impl<'a> Cpu<'a> {
                 }
 
                 self.state = State::FetchOpcode;
+            }
+            State::ExecAcc => {
+                // Perform a dummy bus access. No actual value is read from or written to the bus.
+                // But the 6502 performs a bus access at each cycle - even if it is useless.
+                self.access_bus();
+                if let Some(ins) = LOOKUP[self.cur_op as usize] {
+                    match ins.1 {
+                        // Boolean parameter is_accumulator passed true for accumulator addressing mode
+                        Nmeonic::ASL => self.asl(true),
+                        Nmeonic::LSR => self.lsr(true),
+                        Nmeonic::ROL => self.rol(true),
+                        Nmeonic::ROR => self.ror(true),
+                        _ => panic!("Unrecognized opcode-addressing mode-nmeonic combination!"),
+                    }
+                }
             }
             State::FetchAbsLo => {
                 // Fetch the least significant byte of the effective address
@@ -214,8 +231,15 @@ impl<'a> Cpu<'a> {
         self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }
 
-    fn asl(&mut self) {
-        unimplemented!();
+    fn asl(&mut self, is_accumulator: bool) {
+        if is_accumulator {
+            let shifted_out = (self.a & (1 << 7)) != 0; // True if bit 7 of a is set
+            self.a <<= 1;
+
+            self.set_flag(Flags::Carry, shifted_out);
+            self.set_flag(Flags::Zero, self.a == 0);
+            self.set_flag(Flags::Negative, (self.a as i8) < 0);
+        }
     }
 
     fn bcc(&mut self) {
@@ -359,8 +383,15 @@ impl<'a> Cpu<'a> {
         self.set_flag(Flags::Negative, (self.y as i8) < 0);
     }
 
-    fn lsr(&mut self) {
-        unimplemented!();
+    fn lsr(&mut self, is_accumulator: bool) {
+        if is_accumulator {
+            let shifted_out = (self.a & 1) != 0;
+            self.a >>= 1;
+
+            self.set_flag(Flags::Carry, shifted_out);
+            self.set_flag(Flags::Zero, self.a == 0);
+            self.set_flag(Flags::Negative, (self.a as i8) < 0); // Should be impossible to set
+        }
     }
 
     fn nop(&mut self) {
@@ -390,12 +421,36 @@ impl<'a> Cpu<'a> {
         unimplemented!();
     }
 
-    fn rol(&mut self) {
-        unimplemented!();
+    fn rol(&mut self, is_accumulator: bool) {
+        if is_accumulator {
+            let rotated_in = self.flag_set(Flags::Carry); // New bit 0 is the current value of carry flag
+            let rotated_out = (self.a & (1 << 7)) != 0; // Carry flag set to old bit 7
+
+            self.a <<= 1;
+            if rotated_in {
+                self.a |= 1;
+            }
+
+            self.set_flag(Flags::Carry, rotated_out);
+            self.set_flag(Flags::Zero, self.a == 0);
+            self.set_flag(Flags::Negative, (self.a as i8) < 0);
+        }
     }
 
-    fn ror(&mut self) {
-        unimplemented!();
+    fn ror(&mut self, is_accumulator: bool) {
+        if is_accumulator {
+            let rotated_in = self.flag_set(Flags::Carry); // New bit 7 is the current value of carry flag
+            let rotated_out = (self.a & 1) != 0; // Carry flag set to old bit 0
+
+            self.a >>= 1;
+            if rotated_in {
+                self.a |= (1 << 7);
+            }
+
+            self.set_flag(Flags::Carry, rotated_out);
+            self.set_flag(Flags::Zero, self.a == 0);
+            self.set_flag(Flags::Negative, (self.a as i8) < 0);
+        }
     }
 
     fn rti(&mut self) {

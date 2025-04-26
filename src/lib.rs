@@ -40,6 +40,8 @@ mod tests {
         memory.bytes[1] = 0x0A; // 10 in hex
         memory.bytes[2] = 0xA9; // LDA immediate
         memory.bytes[3] = 0x00; // 0
+        memory.bytes[4] = 0xA9;
+        memory.bytes[5] = 0x08;
 
         bus.map_device(0x00, 0xFF, &mut memory).unwrap();
 
@@ -57,5 +59,11 @@ mod tests {
 
         assert_eq!(cpu.a, 0x00);
         assert!(cpu.flag_set(cpu::Flags::Zero));
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x08);
+        assert!(!cpu.flag_set(cpu::Flags::Zero));
     }
 }
