@@ -187,29 +187,88 @@ impl<'a> Cpu<'a> {
                 }
             }
             State::ExecAbs => {
-                self.addr = self.latch_u16;
-                self.read = true;
-                self.access_bus();
-
                 if let Some(ins) = LOOKUP[self.cur_op as usize] {
                     match ins.1 {
-                        Nmeonic::ADC => self.adc(),
-                        Nmeonic::AND => self.and(),
-                        Nmeonic::BIT => self.bit(),
-                        Nmeonic::CMP => self.cmp(),
-                        Nmeonic::CPX => self.cpx(),
-                        Nmeonic::CPY => self.cpy(),
-                        Nmeonic::EOR => self.eor(),
-                        Nmeonic::LDA => self.lda(),
-                        Nmeonic::LDX => self.ldx(),
-                        Nmeonic::LDY => self.ldy(),
-                        Nmeonic::ORA => self.ora(),
-                        Nmeonic::SBC => self.sbc(),
+                        Nmeonic::ADC => {
+                            self.addr = self.latch_u16;
+                            self.read = true;
+                            self.access_bus();
+                            self.adc()
+                        }
+                        Nmeonic::AND => {
+                            self.addr = self.latch_u16;
+                            self.read = true;
+                            self.access_bus();
+                            self.and()
+                        }
+                        Nmeonic::BIT => {
+                            self.addr = self.latch_u16;
+                            self.read = true;
+                            self.access_bus();
+                            self.bit()
+                        }
+                        Nmeonic::CMP => {
+                            self.addr = self.latch_u16;
+                            self.read = true;
+                            self.access_bus();
+                            self.cmp()
+                        }
+                        Nmeonic::CPX => {
+                            self.addr = self.latch_u16;
+                            self.read = true;
+                            self.access_bus();
+                            self.cpx()
+                        }
+                        Nmeonic::CPY => {
+                            self.addr = self.latch_u16;
+                            self.read = true;
+                            self.access_bus();
+                            self.cpy()
+                        }
+                        Nmeonic::EOR => {
+                            self.addr = self.latch_u16;
+                            self.read = true;
+                            self.access_bus();
+                            self.eor()
+                        }
+                        Nmeonic::LDA => {
+                            self.addr = self.latch_u16;
+                            self.read = true;
+                            self.access_bus();
+                            self.lda()
+                        }
+                        Nmeonic::LDX => {
+                            self.addr = self.latch_u16;
+                            self.read = true;
+                            self.access_bus();
+                            self.ldx()
+                        }
+                        Nmeonic::LDY => {
+                            self.addr = self.latch_u16;
+                            self.read = true;
+                            self.access_bus();
+                            self.ldy()
+                        }
+                        Nmeonic::ORA => {
+                            self.addr = self.latch_u16;
+                            self.read = true;
+                            self.access_bus();
+                            self.ora()
+                        }
+                        Nmeonic::SBC => {
+                            self.addr = self.latch_u16;
+                            self.read = true;
+                            self.access_bus();
+                            self.sbc()
+                        }
+                        // Store instruction functions perform their bus operations.
+                        // They perform bus write on latch_u16
                         Nmeonic::STA => self.sta(),
                         Nmeonic::STX => self.stx(),
                         Nmeonic::STY => self.sty(),
                         _ => panic!("Unimplemented nmeonic for absolute addressing mode!"),
                     }
+                    self.state = State::FetchOpcode;
                 }
             }
             State::RmwRead => {
@@ -305,7 +364,11 @@ impl<'a> Cpu<'a> {
     }
 
     fn bit(&mut self) {
-        unimplemented!();
+        let result = self.a & self.data;
+
+        self.set_flag(Flags::Zero, result == 0);
+        self.set_flag(Flags::Overflow, (self.data & (1 << 6)) != 0);
+        self.set_flag(Flags::Negative, (self.data & (1 << 7)) != 0);
     }
 
     fn bmi(&mut self) {
@@ -512,7 +575,21 @@ impl<'a> Cpu<'a> {
     }
 
     fn sbc(&mut self) {
-        unimplemented!();
+        let val = self.data;
+        let (mut result, mut overflow) = self.a.overflowing_sub(val);
+        if !self.flag_set(Flags::Carry) {
+            (result, overflow) = result.overflowing_sub(1);
+        }
+
+        self.a = result;
+
+        self.set_flag(Flags::Carry, overflow);
+        self.set_flag(Flags::Zero, self.a == 0);
+        self.set_flag(
+            Flags::Overflow,
+            ((self.a ^ result) & (val ^ result) & 0x80) != 0,
+        );
+        self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }
 
     fn sec(&mut self) {
@@ -528,15 +605,24 @@ impl<'a> Cpu<'a> {
     }
 
     fn sta(&mut self) {
-        unimplemented!();
+        self.addr = self.latch_u16;
+        self.data = self.a;
+        self.read = false;
+        self.access_bus();
     }
 
     fn stx(&mut self) {
-        unimplemented!();
+        self.addr = self.latch_u16;
+        self.data = self.x;
+        self.read = false;
+        self.access_bus();
     }
 
     fn sty(&mut self) {
-        unimplemented!();
+        self.addr = self.latch_u16;
+        self.data = self.y;
+        self.read = false;
+        self.access_bus();
     }
 
     fn tax(&mut self) {
