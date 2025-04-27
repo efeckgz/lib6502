@@ -52,9 +52,9 @@ enum State {
     ExecAbs,
 
     // Read-Modify-Write states
-    RmwRead,
-    RmwWrite,
-    // Many more states
+    RmwRead,       // Read opcode from effective address
+    RmwDummyWrite, // Dummy write the value read to the effective address
+    RmwExec,       // Excecute the rmw instruction and write the result back
 }
 
 // Status flags. Used in the processor status register p.
@@ -174,9 +174,34 @@ impl<'a> Cpu<'a> {
                             self.jmp();
                             self.state = State::FetchOpcode;
                         }
+                        // Read-Modify-Write instructions.
+                        // These instructions take 6 cycles.
+                        Nmeonic::ASL
+                        | Nmeonic::DEC
+                        | Nmeonic::INC
+                        | Nmeonic::JSR
+                        | Nmeonic::LSR
+                        | Nmeonic::ROL
+                        | Nmeonic::ROR => self.state = State::RmwRead,
                         _ => todo!("Completed absolute addressing mode!"),
                     }
                 }
+            }
+            State::RmwRead => {
+                // Cycle 4 of r-m-w instructions.
+                // Perform a read on the effective address.
+                self.addr = self.latch_u16;
+                self.read = true;
+                self.access_bus();
+                self.state = State::RmwDummyWrite;
+            }
+            State::RmwDummyWrite => {
+                // Cycle 5 of r-m-w instructions.
+                // Perfrom a dummy write on the effective address of the value just read.
+                self.addr = self.latch_u16;
+                self.read = false;
+                self.access_bus();
+                self.state = State::RmwExec;
             }
             _ => todo!("Implement remaining states!"),
         }
