@@ -88,7 +88,6 @@ impl<'a> Cpu<'a> {
 
     // Emulate 1 cpu cycle.
     pub fn cycle(&mut self) {
-        let data_prev = self.data;
         match self.state {
             State::FetchOpcode => {
                 self.addr = self.pc;
@@ -164,7 +163,7 @@ impl<'a> Cpu<'a> {
                 self.access_bus();
                 self.pc = self.pc.wrapping_add(1);
                 let hi = self.data as u16;
-                self.latch_u16 = (lo << 8) | hi;
+                self.latch_u16 = (hi << 8) | lo;
 
                 if let Some(ins) = LOOKUP[self.cur_op as usize] {
                     match ins.1 {
@@ -183,7 +182,33 @@ impl<'a> Cpu<'a> {
                         | Nmeonic::LSR
                         | Nmeonic::ROL
                         | Nmeonic::ROR => self.state = State::RmwRead,
-                        _ => todo!("Completed absolute addressing mode!"),
+                        _ => self.state = State::ExecAbs,
+                    }
+                }
+            }
+            State::ExecAbs => {
+                self.addr = self.latch_u16;
+                self.read = true;
+                self.access_bus();
+
+                if let Some(ins) = LOOKUP[self.cur_op as usize] {
+                    match ins.1 {
+                        Nmeonic::ADC => self.adc(),
+                        Nmeonic::AND => self.and(),
+                        Nmeonic::BIT => self.bit(),
+                        Nmeonic::CMP => self.cmp(),
+                        Nmeonic::CPX => self.cpx(),
+                        Nmeonic::CPY => self.cpy(),
+                        Nmeonic::EOR => self.eor(),
+                        Nmeonic::LDA => self.lda(),
+                        Nmeonic::LDX => self.ldx(),
+                        Nmeonic::LDY => self.ldy(),
+                        Nmeonic::ORA => self.ora(),
+                        Nmeonic::SBC => self.sbc(),
+                        Nmeonic::STA => self.sta(),
+                        Nmeonic::STX => self.stx(),
+                        Nmeonic::STY => self.sty(),
+                        _ => panic!("Unimplemented nmeonic for absolute addressing mode!"),
                     }
                 }
             }
