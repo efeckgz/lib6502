@@ -1,5 +1,5 @@
 [package]
-name = "newlib6502"
+name = "lib6502"
 version = "0.1.0"
 edition = "2024"
 
