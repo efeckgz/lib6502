@@ -24,6 +24,12 @@ impl Memory {
     pub fn new() -> Self {
         Self { bytes: [0; 65536] }
     }
+
+    pub fn load_program(&mut self, program: &[u8]) {
+        for (i, byte) in program.iter().enumerate() {
+            self.bytes[i] = *byte;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -116,5 +122,34 @@ mod tests {
         assert_eq!(cpu.data, 0x11);
 
         assert_eq!(cpu.a, 0x11);
+    }
+
+    fn adc_imm_abs() {
+        let mut bus: Bus<1> = Bus::new();
+        let mut mem = Memory::new();
+
+        // When the program runs the accumulator will be added 10 twice, a should be 20.
+        let program = [
+            0x69, // ADC immediate
+            0x0A, // Immediate value 10
+            0x6D, // ADC absolute
+            0x05, // ea lo byte
+            0x00, // ea hi byte
+            0x0A, // Value at ea is also 10
+        ];
+
+        mem.load_program(&program);
+
+        bus.map_device(0x0000, 0xFFFF, &mut mem).unwrap();
+
+        let mut cpu = Cpu::new(&mut bus);
+
+        let mut cycles = 0;
+        while cycles < 6 {
+            cpu.cycle();
+            cycles += 1;
+        }
+
+        assert_eq!(cpu.a, 20);
     }
 }
