@@ -165,9 +165,24 @@ mod tests {
 
         // Test 1: Load A 0x40, shift left
         // A becomes 0x80, carry 0, zero 0, negative 1
+        // Should take 4 cycles
         program[0] = 0xA9;
         program[1] = 0x40;
         program[2] = 0x0A;
+
+        // Test 2: Store A at 0x1234, shift left at 0x1234, Load A at 0x1234
+        // A becomes 0x00, carry 1, zero 1, negative 0
+        // 8d 34 12 0e 34 12 ad 34 12
+        // Should take 14 cycles
+        program[3] = 0x8D;
+        program[4] = 0x34;
+        program[5] = 0x12;
+        program[6] = 0x0E;
+        program[7] = 0x34;
+        program[8] = 0x12;
+        program[9] = 0xAD;
+        program[10] = 0x34;
+        program[11] = 0x12;
 
         mem.load_program(&program);
         bus.map_device(0x0000, 0xFFFF, &mut mem).unwrap();
@@ -183,5 +198,22 @@ mod tests {
         assert!(!cpu.flag_set(cpu::Flags::Carry));
         assert!(!cpu.flag_set(cpu::Flags::Zero));
         assert!(cpu.flag_set(cpu::Flags::Negative));
+
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x00);
     }
 }

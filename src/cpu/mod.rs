@@ -164,6 +164,7 @@ impl<'a> Cpu<'a> {
             Nmeonic::ROR => self.ror(true),
             _ => panic!("Unrecognized opcode-addressing mode-nmeonic combination!"),
         }
+        self.state = State::FetchOpcode;
     }
 
     fn fetch_abs_lo(&mut self) {
