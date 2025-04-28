@@ -1,7 +1,7 @@
 #![no_std]
 
-mod bus;
-mod cpu;
+pub mod bus;
+pub mod cpu;
 
 use bus::BusDevice;
 
