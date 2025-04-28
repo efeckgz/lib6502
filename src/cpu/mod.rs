@@ -14,7 +14,8 @@ pub struct Cpu<'a> {
 
     // Internal control
     state: State,
-    cur_op: u8, // Current opcode being worked on
+    cur_mode: AddressingMode,
+    cur_nmeonic: Nmeonic,
 
     // Bus variables
     pub bus: &'a mut dyn BusDevice, // The bus itself
@@ -22,7 +23,9 @@ pub struct Cpu<'a> {
     pub data: u8,                   // 8 bit data bus value
     pub read: bool,                 // bus read/write mode control variable
 
-    latch_u16: u16, // Latch to hold the 16 bit effective addr
+    // Latches to hold temporary values
+    latch_u8: u8,
+    latch_u16: u16,
 }
 
 #[derive(Copy, Clone)]
@@ -77,11 +80,13 @@ impl<'a> Cpu<'a> {
             p: 0,
             s: 0,
             state: State::FetchOpcode,
-            cur_op: 0,
+            cur_mode: AddressingMode::Implied,
+            cur_nmeonic: Nmeonic::BRK,
             bus,
             addr: 0,
             data: 0,
             read: false,
+            latch_u8: 0,
             latch_u16: 0,
         }
     }
@@ -95,16 +100,18 @@ impl<'a> Cpu<'a> {
                 self.access_bus();
 
                 self.pc = self.pc.wrapping_add(1);
-                self.cur_op = self.data;
                 if let Some(instruction) = LOOKUP[self.data as usize] {
-                    match instruction.0 {
-                        AddressingMode::Accumulator => self.state = State::ExecAcc,
-                        AddressingMode::Immediate => self.state = State::ExecImm,
-                        AddressingMode::Absolute => self.state = State::FetchAbsLo,
-                        _ => todo!("Implement remaining states"),
-                    }
+                    let (mode, nm) = instruction;
+                    self.cur_mode = mode;
+                    self.cur_nmeonic = nm;
                 } else {
                     todo!("Implement illegal opcodes!");
+                }
+                match self.cur_mode {
+                    AddressingMode::Accumulator => self.state = State::ExecAcc,
+                    AddressingMode::Immediate => self.state = State::ExecImm,
+                    AddressingMode::Absolute => self.state = State::FetchAbsLo,
+                    _ => todo!("Implement remaining states"),
                 }
             }
             State::ExecImm => {
@@ -113,21 +120,19 @@ impl<'a> Cpu<'a> {
                 self.access_bus();
                 self.pc = self.pc.wrapping_add(1);
 
-                if let Some(instruction) = LOOKUP[self.cur_op as usize] {
-                    match instruction.1 {
-                        Nmeonic::ADC => self.adc(),
-                        Nmeonic::AND => self.and(),
-                        Nmeonic::CMP => self.cmp(),
-                        Nmeonic::CPX => self.cpx(),
-                        Nmeonic::CPY => self.cpy(),
-                        Nmeonic::EOR => self.eor(),
-                        Nmeonic::LDA => self.lda(),
-                        Nmeonic::LDX => self.ldx(),
-                        Nmeonic::LDY => self.ldy(),
-                        Nmeonic::ORA => self.ora(),
+                match self.cur_nmeonic {
+                    Nmeonic::ADC => self.adc(),
+                    Nmeonic::AND => self.and(),
+                    Nmeonic::CMP => self.cmp(),
+                    Nmeonic::CPX => self.cpx(),
+                    Nmeonic::CPY => self.cpy(),
+                    Nmeonic::EOR => self.eor(),
+                    Nmeonic::LDA => self.lda(),
+                    Nmeonic::LDX => self.ldx(),
+                    Nmeonic::LDY => self.ldy(),
+                    Nmeonic::ORA => self.ora(),
 
-                        _ => panic!("Unrecognized opcode-addressing mode-nmeonic combination!"),
-                    }
+                    _ => panic!("Unrecognized opcode-addressing mode-nmeonic combination!"),
                 }
 
                 self.state = State::FetchOpcode;
@@ -136,15 +141,13 @@ impl<'a> Cpu<'a> {
                 // Perform a dummy bus access. No actual value is read from or written to the bus.
                 // But the 6502 performs a bus access at each cycle - even if it is useless.
                 self.access_bus();
-                if let Some(ins) = LOOKUP[self.cur_op as usize] {
-                    match ins.1 {
-                        // Boolean parameter is_accumulator passed true for accumulator addressing mode
-                        Nmeonic::ASL => self.asl(true),
-                        Nmeonic::LSR => self.lsr(true),
-                        Nmeonic::ROL => self.rol(true),
-                        Nmeonic::ROR => self.ror(true),
-                        _ => panic!("Unrecognized opcode-addressing mode-nmeonic combination!"),
-                    }
+                match self.cur_nmeonic {
+                    // Boolean parameter is_accumulator passed true for accumulator addressing mode
+                    Nmeonic::ASL => self.asl(),
+                    Nmeonic::LSR => self.lsr(true),
+                    Nmeonic::ROL => self.rol(true),
+                    Nmeonic::ROR => self.ror(true),
+                    _ => panic!("Unrecognized opcode-addressing mode-nmeonic combination!"),
                 }
             }
             State::FetchAbsLo => {
@@ -165,111 +168,190 @@ impl<'a> Cpu<'a> {
                 let hi = self.data as u16;
                 self.latch_u16 = (hi << 8) | lo;
 
-                if let Some(ins) = LOOKUP[self.cur_op as usize] {
-                    match ins.1 {
-                        Nmeonic::JMP => {
-                            // Absolute JMP is only 3 cycles, there is no foruth cycle to fetch memroy from the effective address.
-                            // pc is set to the effective address and state is back to fetch opcode.
-                            self.jmp();
-                            self.state = State::FetchOpcode;
-                        }
-                        // Read-Modify-Write instructions.
-                        // These instructions take 6 cycles.
-                        Nmeonic::ASL
-                        | Nmeonic::DEC
-                        | Nmeonic::INC
-                        | Nmeonic::JSR
-                        | Nmeonic::LSR
-                        | Nmeonic::ROL
-                        | Nmeonic::ROR => self.state = State::RmwRead,
-                        _ => self.state = State::ExecAbs,
+                match self.cur_nmeonic {
+                    Nmeonic::JMP => {
+                        // Absolute JMP is only 3 cycles, there is no foruth cycle to fetch memroy from the effective address.
+                        // pc is set to the effective address and state is back to fetch opcode.
+                        self.jmp();
+                        self.state = State::FetchOpcode;
                     }
+                    // Read-Modify-Write instructions.
+                    // These instructions take 6 cycles.
+                    Nmeonic::ASL
+                    | Nmeonic::DEC
+                    | Nmeonic::INC
+                    | Nmeonic::JSR
+                    | Nmeonic::LSR
+                    | Nmeonic::ROL
+                    | Nmeonic::ROR => self.state = State::RmwRead,
+                    _ => self.state = State::ExecAbs,
                 }
             }
             State::ExecAbs => {
-                if let Some(ins) = LOOKUP[self.cur_op as usize] {
-                    match ins.1 {
-                        Nmeonic::ADC => {
-                            self.addr = self.latch_u16;
-                            self.read = true;
-                            self.access_bus();
-                            self.adc()
-                        }
-                        Nmeonic::AND => {
-                            self.addr = self.latch_u16;
-                            self.read = true;
-                            self.access_bus();
-                            self.and()
-                        }
-                        Nmeonic::BIT => {
-                            self.addr = self.latch_u16;
-                            self.read = true;
-                            self.access_bus();
-                            self.bit()
-                        }
-                        Nmeonic::CMP => {
-                            self.addr = self.latch_u16;
-                            self.read = true;
-                            self.access_bus();
-                            self.cmp()
-                        }
-                        Nmeonic::CPX => {
-                            self.addr = self.latch_u16;
-                            self.read = true;
-                            self.access_bus();
-                            self.cpx()
-                        }
-                        Nmeonic::CPY => {
-                            self.addr = self.latch_u16;
-                            self.read = true;
-                            self.access_bus();
-                            self.cpy()
-                        }
-                        Nmeonic::EOR => {
-                            self.addr = self.latch_u16;
-                            self.read = true;
-                            self.access_bus();
-                            self.eor()
-                        }
-                        Nmeonic::LDA => {
-                            self.addr = self.latch_u16;
-                            self.read = true;
-                            self.access_bus();
-                            self.lda()
-                        }
-                        Nmeonic::LDX => {
-                            self.addr = self.latch_u16;
-                            self.read = true;
-                            self.access_bus();
-                            self.ldx()
-                        }
-                        Nmeonic::LDY => {
-                            self.addr = self.latch_u16;
-                            self.read = true;
-                            self.access_bus();
-                            self.ldy()
-                        }
-                        Nmeonic::ORA => {
-                            self.addr = self.latch_u16;
-                            self.read = true;
-                            self.access_bus();
-                            self.ora()
-                        }
-                        Nmeonic::SBC => {
-                            self.addr = self.latch_u16;
-                            self.read = true;
-                            self.access_bus();
-                            self.sbc()
-                        }
-                        // Store instruction functions perform their bus operations.
-                        // They perform bus write on latch_u16
-                        Nmeonic::STA => self.sta(),
-                        Nmeonic::STX => self.stx(),
-                        Nmeonic::STY => self.sty(),
-                        _ => panic!("Unimplemented nmeonic for absolute addressing mode!"),
+                match self.cur_nmeonic {
+                    Nmeonic::ADC => {
+                        self.addr = self.latch_u16;
+                        self.read = true;
+                        self.access_bus();
+                        self.adc()
                     }
-                    self.state = State::FetchOpcode;
+                    Nmeonic::AND => {
+                        self.addr = self.latch_u16;
+                        self.read = true;
+                        self.access_bus();
+                        self.and()
+                    }
+                    Nmeonic::BIT => {
+                        self.addr = self.latch_u16;
+                        self.read = true;
+                        self.access_bus();
+                        self.bit()
+                    }
+                    Nmeonic::CMP => {
+                        self.addr = self.latch_u16;
+                        self.read = true;
+                        self.access_bus();
+                        self.cmp()
+                    }
+                    Nmeonic::CPX => {
+                        self.addr = self.latch_u16;
+                        self.read = true;
+                        self.access_bus();
+                        self.cpx()
+                    }
+                    Nmeonic::CPY => {
+                        self.addr = self.latch_u16;
+                        self.read = true;
+                        self.access_bus();
+                        self.cpy()
+                    }
+                    Nmeonic::EOR => {
+                        self.addr = self.latch_u16;
+                        self.read = true;
+                        self.access_bus();
+                        self.eor()
+                    }
+                    Nmeonic::LDA => {
+                        self.addr = self.latch_u16;
+                        self.read = true;
+                        self.access_bus();
+                        self.lda()
+                    }
+                    Nmeonic::LDX => {
+                        self.addr = self.latch_u16;
+                        self.read = true;
+                        self.access_bus();
+                        self.ldx()
+                    }
+                    Nmeonic::LDY => {
+                        self.addr = self.latch_u16;
+                        self.read = true;
+                        self.access_bus();
+                        self.ldy()
+                    }
+                    Nmeonic::ORA => {
+                        self.addr = self.latch_u16;
+                        self.read = true;
+                        self.access_bus();
+                        self.ora()
+                    }
+                    Nmeonic::SBC => {
+                        self.addr = self.latch_u16;
+                        self.read = true;
+                        self.access_bus();
+                        self.sbc()
+                    }
+                    // Store instruction functions perform their bus operations.
+                    // They perform bus write on latch_u16
+                    Nmeonic::STA => self.sta(),
+                    Nmeonic::STX => self.stx(),
+                    Nmeonic::STY => self.sty(),
+                    _ => panic!("Unimplemented nmeonic for absolute addressing mode!"),
                 }
+                self.state = State::FetchOpcode;
+                // if let Some(ins) = LOOKUP[self.cur_op as usize] {
+                //     match ins.1 {
+                //         Nmeonic::ADC => {
+                //             self.addr = self.latch_u16;
+                //             self.read = true;
+                //             self.access_bus();
+                //             self.adc()
+                //         }
+                //         Nmeonic::AND => {
+                //             self.addr = self.latch_u16;
+                //             self.read = true;
+                //             self.access_bus();
+                //             self.and()
+                //         }
+                //         Nmeonic::BIT => {
+                //             self.addr = self.latch_u16;
+                //             self.read = true;
+                //             self.access_bus();
+                //             self.bit()
+                //         }
+                //         Nmeonic::CMP => {
+                //             self.addr = self.latch_u16;
+                //             self.read = true;
+                //             self.access_bus();
+                //             self.cmp()
+                //         }
+                //         Nmeonic::CPX => {
+                //             self.addr = self.latch_u16;
+                //             self.read = true;
+                //             self.access_bus();
+                //             self.cpx()
+                //         }
+                //         Nmeonic::CPY => {
+                //             self.addr = self.latch_u16;
+                //             self.read = true;
+                //             self.access_bus();
+                //             self.cpy()
+                //         }
+                //         Nmeonic::EOR => {
+                //             self.addr = self.latch_u16;
+                //             self.read = true;
+                //             self.access_bus();
+                //             self.eor()
+                //         }
+                //         Nmeonic::LDA => {
+                //             self.addr = self.latch_u16;
+                //             self.read = true;
+                //             self.access_bus();
+                //             self.lda()
+                //         }
+                //         Nmeonic::LDX => {
+                //             self.addr = self.latch_u16;
+                //             self.read = true;
+                //             self.access_bus();
+                //             self.ldx()
+                //         }
+                //         Nmeonic::LDY => {
+                //             self.addr = self.latch_u16;
+                //             self.read = true;
+                //             self.access_bus();
+                //             self.ldy()
+                //         }
+                //         Nmeonic::ORA => {
+                //             self.addr = self.latch_u16;
+                //             self.read = true;
+                //             self.access_bus();
+                //             self.ora()
+                //         }
+                //         Nmeonic::SBC => {
+                //             self.addr = self.latch_u16;
+                //             self.read = true;
+                //             self.access_bus();
+                //             self.sbc()
+                //         }
+                //         // Store instruction functions perform their bus operations.
+                //         // They perform bus write on latch_u16
+                //         Nmeonic::STA => self.sta(),
+                //         Nmeonic::STX => self.stx(),
+                //         Nmeonic::STY => self.sty(),
+                //         _ => panic!("Unimplemented nmeonic for absolute addressing mode!"),
+                //     }
+                //     self.state = State::FetchOpcode;
+                // }
             }
             State::RmwRead => {
                 // Cycle 4 of r-m-w instructions.
@@ -286,6 +368,18 @@ impl<'a> Cpu<'a> {
                 self.read = false;
                 self.access_bus();
                 self.state = State::RmwExec;
+            }
+            State::RmwExec => {
+                match self.cur_nmeonic {
+                    Nmeonic::ASL => self.asl(),
+                    _ => unimplemented!(),
+                }
+
+                self.data = self.latch_u8;
+                self.addr = self.latch_u16;
+                self.read = false;
+                self.access_bus();
+                self.state = State::FetchOpcode;
             }
             _ => todo!("Implement remaining states!"),
         }
@@ -340,14 +434,31 @@ impl<'a> Cpu<'a> {
         self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }
 
-    fn asl(&mut self, is_accumulator: bool) {
-        if is_accumulator {
-            let shifted_out = (self.a & (1 << 7)) != 0; // True if bit 7 of a is set
-            self.a <<= 1;
+    fn asl(&mut self) {
+        match self.cur_mode {
+            AddressingMode::Accumulator => {
+                let shifted_out = (self.a & (1 << 7)) != 0; // True if bit 7 of a is set
+                self.a <<= 1;
 
-            self.set_flag(Flags::Carry, shifted_out);
-            self.set_flag(Flags::Zero, self.a == 0);
-            self.set_flag(Flags::Negative, (self.a as i8) < 0);
+                self.set_flag(Flags::Carry, shifted_out);
+                self.set_flag(Flags::Zero, self.a == 0);
+                self.set_flag(Flags::Negative, (self.a as i8) < 0);
+            }
+            AddressingMode::ZeroPage
+            | AddressingMode::ZeroPageX
+            | AddressingMode::Absolute
+            | AddressingMode::AbsoluteX => {
+                let mut val = self.data;
+                let shifted_out = (val & (1 << 7)) != 0;
+                val <<= 1;
+
+                self.set_flag(Flags::Carry, shifted_out);
+                self.set_flag(Flags::Zero, val == 0);
+                self.set_flag(Flags::Negative, (val as i8) < 0);
+
+                self.latch_u8 = val;
+            }
+            _ => panic!("Unrecognized addressing mode for asl instruction!"),
         }
     }
 
@@ -557,7 +668,7 @@ impl<'a> Cpu<'a> {
 
             self.a >>= 1;
             if rotated_in {
-                self.a |= (1 << 7);
+                self.a |= 1 << 7;
             }
 
             self.set_flag(Flags::Carry, rotated_out);
