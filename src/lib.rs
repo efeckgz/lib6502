@@ -216,4 +216,49 @@ mod tests {
 
         assert_eq!(cpu.a, 0x00);
     }
+
+    #[test]
+    fn increment_decrement_abs() {
+        let mut bus: Bus<1> = Bus::new();
+        let mut mem = Memory::new();
+
+        let program = [
+            // Test 1: Increment
+            // Load the A register with immediate value 0x42
+            // Store the A register at 0x1234
+            // Increment memory at address 0x1234
+            // Load the A register from address 0x1234
+            // A should hold the value 0x42 + 1 = 0x43
+            0xA9, 0x42, // lda #$42
+            0x8D, 0x34, 0x12, // sta $1234
+            0xEE, 0x34, 0x12, // inc $1234
+            0xAD, 0x34, 0x12, // lda $1234
+            // Test 2:
+            // Decrement memory at 0x1234 - Address now contains 0x43 - 1 = 0x42
+            // Load the A register from 0x1234
+            0xCE, 0x34, 0x12, // dec $1234
+            0xAD, 0x34, 0x12, // lda $1234
+        ];
+
+        mem.load_program(&program);
+        bus.map_device(0x0000, 0xFFFF, &mut mem).unwrap();
+
+        let mut cpu = Cpu::new(&mut bus);
+
+        let mut cycles = 0;
+        while cycles < 16 {
+            cpu.cycle();
+            cycles += 1;
+        }
+
+        assert_eq!(cpu.a, 0x43);
+
+        cycles = 0;
+        while cycles < 10 {
+            cpu.cycle();
+            cycles += 1;
+        }
+
+        assert_eq!(cpu.a, 0x42);
+    }
 }
