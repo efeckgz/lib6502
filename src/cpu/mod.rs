@@ -13,7 +13,7 @@ pub struct Cpu<'a> {
     pub s: u8,   // Stack pointer
 
     // Internal control
-    state: State,
+    pub state: State,
     cur_mode: AddressingMode,
     cur_nmeonic: Nmeonic,
 
@@ -46,7 +46,7 @@ pub enum AddressingMode {
 }
 
 // Inner state of the processor, used in state machine.
-enum State {
+pub enum State {
     FetchOpcode, // Fetch opcode state. Every instruction starts here.
     ExecImm,     // Immediate addressing mode execution state
     ExecAcc,     // Accumulator addressing mode execution state
