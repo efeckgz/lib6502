@@ -159,9 +159,9 @@ impl<'a> Cpu<'a> {
         match self.cur_nmeonic {
             // Boolean parameter is_accumulator passed true for accumulator addressing mode
             Nmeonic::ASL => self.asl(),
-            Nmeonic::LSR => self.lsr(true),
-            Nmeonic::ROL => self.rol(true),
-            Nmeonic::ROR => self.ror(true),
+            Nmeonic::LSR => self.lsr(),
+            Nmeonic::ROL => self.rol(),
+            Nmeonic::ROR => self.ror(),
             _ => panic!("Unrecognized opcode-addressing mode-nmeonic combination!"),
         }
         self.state = State::FetchOpcode;
@@ -313,10 +313,10 @@ impl<'a> Cpu<'a> {
             Nmeonic::ASL => self.asl(),
             Nmeonic::DEC => self.dec(),
             Nmeonic::INC => self.inc(),
-            Nmeonic::JSR => self.jsr(),
-            Nmeonic::LSR => self.lsr(false),
-            Nmeonic::ROL => self.rol(false),
-            Nmeonic::ROR => self.ror(false),
+            Nmeonic::JSR => self.jsr(), // jump to subroutine works differently!
+            Nmeonic::LSR => self.lsr(),
+            Nmeonic::ROL => self.rol(),
+            Nmeonic::ROR => self.ror(),
             _ => unimplemented!(),
         }
 
@@ -561,14 +561,31 @@ impl<'a> Cpu<'a> {
         self.set_flag(Flags::Negative, (self.y as i8) < 0);
     }
 
-    fn lsr(&mut self, is_accumulator: bool) {
-        if is_accumulator {
-            let shifted_out = (self.a & 1) != 0;
-            self.a >>= 1;
+    fn lsr(&mut self) {
+        match self.cur_mode {
+            AddressingMode::Accumulator => {
+                let shifted_out = (self.a & 1) != 0;
+                self.a >>= 1;
 
-            self.set_flag(Flags::Carry, shifted_out);
-            self.set_flag(Flags::Zero, self.a == 0);
-            self.set_flag(Flags::Negative, (self.a as i8) < 0); // Should be impossible to set
+                self.set_flag(Flags::Carry, shifted_out);
+                self.set_flag(Flags::Zero, self.a == 0);
+                self.set_flag(Flags::Negative, (self.a as i8) < 0); // Should be impossible to set
+            }
+            AddressingMode::ZeroPage
+            | AddressingMode::ZeroPageX
+            | AddressingMode::Absolute
+            | AddressingMode::AbsoluteX => {
+                let val = self.data;
+                let shifted_out = (val & 1) != 0;
+                let result = val >> 1;
+
+                self.set_flag(Flags::Carry, shifted_out);
+                self.set_flag(Flags::Zero, result == 0);
+                self.set_flag(Flags::Negative, (result as i8) < 0);
+
+                self.latch_u8 = result;
+            }
+            _ => panic!("Unrecognized addressing mode for lsr instruction!"),
         }
     }
 
@@ -599,35 +616,79 @@ impl<'a> Cpu<'a> {
         unimplemented!();
     }
 
-    fn rol(&mut self, is_accumulator: bool) {
-        if is_accumulator {
-            let rotated_in = self.flag_set(Flags::Carry); // New bit 0 is the current value of carry flag
-            let rotated_out = (self.a & (1 << 7)) != 0; // Carry flag set to old bit 7
+    fn rol(&mut self) {
+        match self.cur_mode {
+            AddressingMode::Accumulator => {
+                let rotated_in = self.flag_set(Flags::Carry); // New bit 0 is the current value of carry flag
+                let rotated_out = (self.a & (1 << 7)) != 0; // Carry flag set to old bit 7
 
-            self.a <<= 1;
-            if rotated_in {
-                self.a |= 1;
+                self.a <<= 1;
+                if rotated_in {
+                    self.a |= 1;
+                }
+
+                self.set_flag(Flags::Carry, rotated_out);
+                self.set_flag(Flags::Zero, self.a == 0);
+                self.set_flag(Flags::Negative, (self.a as i8) < 0);
             }
+            AddressingMode::ZeroPage
+            | AddressingMode::ZeroPageX
+            | AddressingMode::Absolute
+            | AddressingMode::AbsoluteX => {
+                let val = self.data;
+                let rotated_in = self.flag_set(Flags::Carry);
+                let rotated_out = (val & (1 << 7)) != 0;
 
-            self.set_flag(Flags::Carry, rotated_out);
-            self.set_flag(Flags::Zero, self.a == 0);
-            self.set_flag(Flags::Negative, (self.a as i8) < 0);
+                let mut result = val << 1;
+                if rotated_in {
+                    result |= 1;
+                }
+
+                self.set_flag(Flags::Carry, rotated_out);
+                self.set_flag(Flags::Zero, result == 0);
+                self.set_flag(Flags::Negative, (result as i8) < 0);
+
+                self.latch_u8 = result;
+            }
+            _ => panic!("Unrecognized addressing mode for rol instruction!"),
         }
     }
 
-    fn ror(&mut self, is_accumulator: bool) {
-        if is_accumulator {
-            let rotated_in = self.flag_set(Flags::Carry); // New bit 7 is the current value of carry flag
-            let rotated_out = (self.a & 1) != 0; // Carry flag set to old bit 0
+    fn ror(&mut self) {
+        match self.cur_mode {
+            AddressingMode::Accumulator => {
+                let rotated_in = self.flag_set(Flags::Carry); // New bit 7 is the current value of carry flag
+                let rotated_out = (self.a & 1) != 0; // Carry flag set to old bit 0
 
-            self.a >>= 1;
-            if rotated_in {
-                self.a |= 1 << 7;
+                self.a >>= 1;
+                if rotated_in {
+                    self.a |= 1 << 7;
+                }
+
+                self.set_flag(Flags::Carry, rotated_out);
+                self.set_flag(Flags::Zero, self.a == 0);
+                self.set_flag(Flags::Negative, (self.a as i8) < 0);
             }
+            AddressingMode::ZeroPage
+            | AddressingMode::ZeroPageX
+            | AddressingMode::Absolute
+            | AddressingMode::AbsoluteX => {
+                let val = self.data;
+                let rotated_in = self.flag_set(Flags::Carry);
+                let rotated_out = (val & 1) != 0;
 
-            self.set_flag(Flags::Carry, rotated_out);
-            self.set_flag(Flags::Zero, self.a == 0);
-            self.set_flag(Flags::Negative, (self.a as i8) < 0);
+                let mut result = val >> 1;
+                if rotated_in {
+                    result |= 1 << 7;
+                }
+
+                self.set_flag(Flags::Carry, rotated_out);
+                self.set_flag(Flags::Zero, result == 0);
+                self.set_flag(Flags::Negative, (result as i8) < 0);
+
+                self.latch_u8 = result;
+            }
+            _ => panic!("Unrecognized addressing mode for ror instruction!"),
         }
     }
 
