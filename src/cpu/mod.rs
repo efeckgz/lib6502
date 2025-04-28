@@ -311,6 +311,12 @@ impl<'a> Cpu<'a> {
     fn rmw_exec(&mut self) {
         match self.cur_nmeonic {
             Nmeonic::ASL => self.asl(),
+            Nmeonic::DEC => self.dec(),
+            Nmeonic::INC => self.inc(),
+            Nmeonic::JSR => self.jsr(),
+            Nmeonic::LSR => self.lsr(false),
+            Nmeonic::ROL => self.rol(false),
+            Nmeonic::ROR => self.ror(false),
             _ => unimplemented!(),
         }
 
@@ -483,7 +489,13 @@ impl<'a> Cpu<'a> {
     }
 
     fn dec(&mut self) {
-        unimplemented!();
+        let val = self.data;
+        let result = val.wrapping_sub(1);
+
+        self.latch_u8 = result;
+
+        self.set_flag(Flags::Zero, result == 0);
+        self.set_flag(Flags::Negative, (result as i8) < 0);
     }
 
     fn dex(&mut self) {
