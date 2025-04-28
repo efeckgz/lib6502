@@ -335,6 +335,22 @@ impl<'a> Cpu<'a> {
         }
     }
 
+    fn push_stack(&mut self, val: u8) {
+        self.addr = self.s as u16;
+        self.data = val;
+        self.read = false;
+        self.access_bus();
+        self.s = self.s.wrapping_sub(1);
+    }
+
+    fn pop_stack(&mut self) {
+        self.addr = self.s as u16;
+        self.read = true;
+        self.access_bus(); // Stack top is at self.data now
+        self.s = self.s.wrapping_add(1);
+    }
+
+
     // Returns the set status of a flag in p register.
     pub fn flag_set(&self, flag: Flags) -> bool {
         (self.p & (1 << flag as u8)) != 0
