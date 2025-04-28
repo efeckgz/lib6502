@@ -514,7 +514,13 @@ impl<'a> Cpu<'a> {
     }
 
     fn inc(&mut self) {
-        unimplemented!();
+        let val = self.data;
+        let result = val.wrapping_add(1);
+
+        self.latch_u8 = result;
+
+        self.set_flag(Flags::Zero, result == 0);
+        self.set_flag(Flags::Negative, (result as i8) < 0);
     }
 
     fn inx(&mut self) {
