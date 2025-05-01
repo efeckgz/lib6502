@@ -58,6 +58,11 @@ pub enum State {
     RmwRead,       // Read opcode from effective address
     RmwDummyWrite, // Dummy write the value read to the effective address
     RmwExec,       // Excecute the rmw instruction and write the result back
+
+    // JSR states - JSR is a 6 cycle absolute instruction but it works differently than others.
+    JsrStorePcH,
+    JsrStorePcL,
+    JsrRead, // Read the new program counter here
 }
 
 // Status flags. Used in the processor status register p.
@@ -103,6 +108,9 @@ impl<'a> Cpu<'a> {
             State::RmwRead => self.rmw_read(),
             State::RmwDummyWrite => self.rmw_dummy_write(),
             State::RmwExec => self.rmw_exec(),
+            State::JsrStorePcH => self.jsr_store_pch(),
+            State::JsrStorePcL => self.jsr_store_pcl(),
+            State::JsrRead => self.jsr_read(),
             _ => todo!("Implement remaining states!"),
         }
     }
@@ -172,13 +180,18 @@ impl<'a> Cpu<'a> {
         self.addr = self.pc;
         self.read = true;
         self.access_bus();
+        self.latch_u8 = self.data;
         self.pc = self.pc.wrapping_add(1);
-        self.state = State::FetchAbsHi;
+
+        match self.cur_nmeonic {
+            Nmeonic::JSR => self.state = State::JsrStorePcH,
+            _ => self.state = State::FetchAbsHi,
+        }
     }
 
     fn fetch_abs_hi(&mut self) {
         // Fetch the high byte of the effective address
-        let lo = self.data as u16; // Data bus contains the least significant byte fetched in the previous cycle
+        let lo = self.latch_u8 as u16; // Data bus contains the least significant byte fetched in the previous cycle
         self.addr = self.pc;
         self.read = true;
         self.access_bus();
@@ -193,12 +206,15 @@ impl<'a> Cpu<'a> {
                 self.jmp();
                 self.state = State::FetchOpcode;
             }
+            Nmeonic::JSR => {
+                self.pc = self.latch_u16;
+                self.state = State::JsrRead;
+            }
             // Read-Modify-Write instructions.
             // These instructions take 6 cycles.
             Nmeonic::ASL
             | Nmeonic::DEC
             | Nmeonic::INC
-            | Nmeonic::JSR
             | Nmeonic::LSR
             | Nmeonic::ROL
             | Nmeonic::ROR => self.state = State::RmwRead,
@@ -327,6 +343,22 @@ impl<'a> Cpu<'a> {
         self.state = State::FetchOpcode;
     }
 
+    fn jsr_store_pch(&mut self) {
+        self.push_stack(((self.pc & 0xFF00) >> 7) as u8);
+        self.state = State::JsrStorePcL;
+    }
+
+    fn jsr_store_pcl(&mut self) {
+        self.push_stack((self.pc & 0xFF) as u8);
+    }
+
+    fn jsr_read(&mut self) {
+        self.addr = self.pc;
+        self.read = true;
+        self.access_bus();
+        self.state = State::FetchOpcode;
+    }
+
     fn access_bus(&mut self) {
         if self.read {
             self.data = self.bus.read(self.addr);
@@ -349,7 +381,6 @@ impl<'a> Cpu<'a> {
         self.access_bus(); // Stack top is at self.data now
         self.s = self.s.wrapping_add(1);
     }
-
 
     // Returns the set status of a flag in p register.
     pub fn flag_set(&self, flag: Flags) -> bool {
