@@ -3,6 +3,8 @@ mod lookup;
 use crate::bus::BusDevice;
 use lookup::{LOOKUP, Nmeonic};
 
+const STACK_BOTTOM: u16 = 0x0100;
+
 pub struct Cpu<'a> {
     // Internal state
     pub a: u8,   // Accumulator
@@ -47,6 +49,14 @@ pub enum AddressingMode {
 
 // Inner state of the processor, used in state machine.
 pub enum State {
+    ResetHold,
+    FirstStart,
+    SecondStart,
+    ThirdStart,
+    FourthStart,
+    FetchFirstVec,
+    FetchSecondVec,
+
     FetchOpcode, // Fetch opcode state. Every instruction starts here.
     ExecImm,     // Immediate addressing mode execution state
     ExecAcc,     // Accumulator addressing mode execution state
@@ -99,6 +109,13 @@ impl<'a> Cpu<'a> {
     // Emulate 1 cpu cycle.
     pub fn cycle(&mut self) {
         match self.state {
+            State::ResetHold => self.reset_hold(),
+            State::FirstStart => self.first_start(),
+            State::SecondStart => self.second_start(),
+            State::ThirdStart => self.third_start(),
+            State::FourthStart => self.fourth_start(),
+            State::FetchFirstVec => self.fetch_first_vec(),
+            State::FetchSecondVec => self.fetch_second_vec(),
             State::FetchOpcode => self.fetch_opcode(),
             State::ExecImm => self.exec_imm(),
             State::ExecAcc => self.exec_acc(),
@@ -113,6 +130,57 @@ impl<'a> Cpu<'a> {
             State::JsrRead => self.jsr_read(),
             _ => todo!("Implement remaining states!"),
         }
+    }
+
+    fn reset_hold(&mut self) {
+        // In read mode during reset, address and data bus are don't care
+        self.read = true;
+        self.access_bus();
+        self.state = State::FirstStart;
+    }
+
+    fn first_start(&mut self) {
+        self.read = true;
+        self.addr = self.addr.wrapping_add(1); // Read from location next to previous cycle
+        self.access_bus();
+        self.state = State::SecondStart;
+    }
+
+    fn second_start(&mut self) {
+        self.addr = STACK_BOTTOM + self.s as u16;
+        self.read = true;
+        self.access_bus();
+        self.state = State::ThirdStart;
+    }
+
+    fn third_start(&mut self) {
+        self.addr = STACK_BOTTOM + self.s.wrapping_sub(1) as u16;
+        self.read = true;
+        self.access_bus();
+        self.state = State::FourthStart;
+    }
+
+    fn fourth_start(&mut self) {
+        self.addr = STACK_BOTTOM + self.s.wrapping_sub(2) as u16;
+        self.read = true;
+        self.access_bus();
+        self.state = State::FetchFirstVec;
+    }
+
+    fn fetch_first_vec(&mut self) {
+        self.addr = 0xFFFC; // Currently hard set to initialization vector, fix for other interrupts in the future
+        self.read = true;
+        self.access_bus();
+        self.latch_u8 = self.data; // Save the value read
+        self.state = State::FetchSecondVec;
+    }
+
+    fn fetch_second_vec(&mut self) {
+        self.addr = 0xFFFD; // Fix for other interrupts
+        self.read = true;
+        self.access_bus();
+        self.pc = ((self.data as u16) << 8) | self.latch_u8 as u16;
+        self.state = State::FetchOpcode;
     }
 
     fn fetch_opcode(&mut self) {
