@@ -287,4 +287,35 @@ mod tests {
 
         assert_eq!(cpu.a, 0x42);
     }
+
+    #[test]
+    fn test_init_pc() {
+        // This test loads the initialization vector a program counter value,
+        // and tests if the program execution starts from the correct memory address.
+        let mut bus: Bus<1> = Bus::new();
+        let mut ram = Memory::new();
+
+        let mut program = [0_u8; 65536];
+
+        // Load the initialization vector the initial pc value 0x0600
+        program[0xFFFC] = 0x00;
+        program[0xFFFD] = 0x06;
+
+        // Load the program from 0x0600 - lda #42
+        program[0x0600] = 0xA9;
+        program[0x0601] = 0x42;
+
+        ram.load_program(&program);
+        bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
+
+        let mut cpu = Cpu::new(&mut bus);
+        cpu.start_sequence();
+
+        assert_eq!(cpu.pc, 0x0600);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x42);
+    }
 }
