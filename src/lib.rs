@@ -311,11 +311,13 @@ mod tests {
         let mut cpu = Cpu::new(&mut bus);
         cpu.start_sequence();
 
+        // The correct pc value is loaded
         assert_eq!(cpu.pc, 0x0600);
 
         cpu.cycle();
         cpu.cycle();
 
+        // Program executed successfully
         assert_eq!(cpu.a, 0x42);
     }
 }
