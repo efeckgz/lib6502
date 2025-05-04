@@ -1,7 +1,5 @@
 mod lookup;
 
-use core::ops::Neg;
-
 use crate::bus::BusDevice;
 use lookup::{LOOKUP, Nmeonic};
 
