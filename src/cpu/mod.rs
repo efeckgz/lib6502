@@ -409,7 +409,6 @@ impl<'a> Cpu<'a> {
             Nmeonic::ASL => self.asl(),
             Nmeonic::DEC => self.dec(),
             Nmeonic::INC => self.inc(),
-            Nmeonic::JSR => self.jsr(), // jump to subroutine works differently!
             Nmeonic::LSR => self.lsr(),
             Nmeonic::ROL => self.rol(),
             Nmeonic::ROR => self.ror(),
