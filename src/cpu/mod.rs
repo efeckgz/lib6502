@@ -70,9 +70,9 @@ pub enum State {
     RmwExec,       // Excecute the rmw instruction and write the result back
 
     // JSR states - JSR is a 6 cycle absolute instruction but it works differently than others.
+    JsrDummyStack, // A dummy stack read is done before storing the pc
     JsrStorePcH,
     JsrStorePcL,
-    JsrRead, // Read the new program counter here
 }
 
 // Status flags. Used in the processor status register p.
@@ -93,7 +93,7 @@ impl<'a> Cpu<'a> {
             y: 0,
             pc: 0,
             p: 0,
-            s: 0,
+            s: 0xFF,                 // Start at stack top
             state: State::ResetHold, // Start the cpu at the reset state.
             cur_mode: AddressingMode::Implied,
             cur_nmeonic: Nmeonic::BRK,
@@ -125,9 +125,9 @@ impl<'a> Cpu<'a> {
             State::RmwRead => self.rmw_read(),
             State::RmwDummyWrite => self.rmw_dummy_write(),
             State::RmwExec => self.rmw_exec(),
+            State::JsrDummyStack => self.jsr_dummy_stack(),
             State::JsrStorePcH => self.jsr_store_pch(),
             State::JsrStorePcL => self.jsr_store_pcl(),
-            State::JsrRead => self.jsr_read(),
             _ => todo!("Implement remaining states!"),
         }
     }
@@ -264,7 +264,7 @@ impl<'a> Cpu<'a> {
         self.pc = self.pc.wrapping_add(1);
 
         match self.cur_nmeonic {
-            Nmeonic::JSR => self.state = State::JsrStorePcH,
+            Nmeonic::JSR => self.state = State::JsrDummyStack,
             _ => self.state = State::FetchAbsHi,
         }
     }
@@ -288,7 +288,7 @@ impl<'a> Cpu<'a> {
             }
             Nmeonic::JSR => {
                 self.pc = self.latch_u16;
-                self.state = State::JsrRead;
+                self.state = State::FetchOpcode;
             }
             // Read-Modify-Write instructions.
             // These instructions take 6 cycles.
@@ -423,6 +423,13 @@ impl<'a> Cpu<'a> {
         self.state = State::FetchOpcode;
     }
 
+    fn jsr_dummy_stack(&mut self) {
+        self.addr = STACK_BOTTOM + self.s as u16;
+        self.read = true;
+        self.access_bus(); // The value read is discarded
+        self.state = State::JsrStorePcH;
+    }
+
     fn jsr_store_pch(&mut self) {
         self.push_stack(((self.pc & 0xFF00) >> 7) as u8);
         self.state = State::JsrStorePcL;
@@ -430,6 +437,7 @@ impl<'a> Cpu<'a> {
 
     fn jsr_store_pcl(&mut self) {
         self.push_stack((self.pc & 0xFF) as u8);
+        self.state = State::FetchAbsHi;
     }
 
     fn jsr_read(&mut self) {
@@ -448,7 +456,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn push_stack(&mut self, val: u8) {
-        self.addr = self.s as u16;
+        self.addr = STACK_BOTTOM + self.s as u16;
         self.data = val;
         self.read = false;
         self.access_bus();
@@ -456,7 +464,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn pop_stack(&mut self) {
-        self.addr = self.s as u16;
+        self.addr = STACK_BOTTOM + self.s as u16;
         self.read = true;
         self.access_bus(); // Stack top is at self.data now
         self.s = self.s.wrapping_add(1);

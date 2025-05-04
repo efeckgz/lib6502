@@ -320,4 +320,57 @@ mod tests {
         // Program executed successfully
         assert_eq!(cpu.a, 0x42);
     }
+
+    #[test]
+    fn jsr_works() {
+        // Start at 0x0600, jump to a subroutine at 0x1234
+        let mut bus: Bus<1> = Bus::new();
+        let mut ram = Memory::new();
+        let mut program = [0_u8; 65536];
+
+        program[0xFFFC] = 0x00;
+        program[0xFFFD] = 0x06;
+
+        // lda #42 to test startup
+        program[0x0600] = 0xA9;
+        program[0x0601] = 0x42;
+
+        // jsr $1234
+        program[0x0602] = 0x20;
+        program[0x0603] = 0x34;
+        program[0x0604] = 0x12;
+
+        // lda #15 on the subroutine address
+        program[0x1234] = 0xA9;
+        program[0x1235] = 0x15;
+
+        ram.load_program(&program);
+        bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
+
+        let mut cpu = Cpu::new(&mut bus);
+        cpu.start_sequence();
+
+        assert_eq!(cpu.pc, 0x0600);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x42);
+
+        // 6 cycles for jsr
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.pc, 0x1234); // New pc is set
+        assert_eq!(cpu.s, 0xFD); // Stack decremented 2 bytes
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x15);
+    }
 }
