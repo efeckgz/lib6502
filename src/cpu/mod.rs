@@ -1,5 +1,7 @@
 mod lookup;
 
+use core::ops::Neg;
+
 use crate::bus::BusDevice;
 use lookup::{LOOKUP, Nmeonic};
 
@@ -118,6 +120,7 @@ impl<'a> Cpu<'a> {
             State::FetchFirstVec => self.fetch_first_vec(),
             State::FetchSecondVec => self.fetch_second_vec(),
             State::FetchOpcode => self.fetch_opcode(),
+            State::ExecImpl => self.exec_impl(),
             State::ExecImm => self.exec_imm(),
             State::ExecAcc => self.exec_acc(),
             State::FetchAbsLo => self.fetch_abs_lo(),
@@ -211,6 +214,7 @@ impl<'a> Cpu<'a> {
 
         match self.cur_mode {
             AddressingMode::Implied => match self.cur_nmeonic {
+                // These instructions require 2 cycles only.
                 Nmeonic::CLC
                 | Nmeonic::CLD
                 | Nmeonic::CLV
@@ -242,6 +246,35 @@ impl<'a> Cpu<'a> {
             AddressingMode::Immediate => self.state = State::ExecImm,
             AddressingMode::Absolute => self.state = State::FetchAbsLo,
             _ => todo!("Implement remaining states"),
+        }
+    }
+
+    fn exec_impl(&mut self) {
+        // Read the new opcode and ignore it
+        self.addr = self.pc;
+        self.read = true;
+        self.access_bus();
+
+        match self.cur_nmeonic {
+            Nmeonic::CLC => self.clc(),
+            Nmeonic::CLD => self.cld(),
+            Nmeonic::CLI => self.cli(),
+            Nmeonic::CLV => self.clv(),
+            Nmeonic::DEX => self.dex(),
+            Nmeonic::DEY => self.dey(),
+            Nmeonic::INX => self.inx(),
+            Nmeonic::INY => self.iny(),
+            Nmeonic::NOP => self.nop(),
+            Nmeonic::SEC => self.sec(),
+            Nmeonic::SED => self.sed(),
+            Nmeonic::SEI => self.sei(),
+            Nmeonic::TAX => self.tax(),
+            Nmeonic::TAY => self.tay(),
+            Nmeonic::TSX => self.tsx(),
+            Nmeonic::TXA => self.txa(),
+            Nmeonic::TXS => self.txs(),
+            Nmeonic::TYA => self.tya(),
+            _ => panic!("Unrecognized nmeonic for 2 cycle implied mode!"),
         }
     }
 
@@ -612,19 +645,20 @@ impl<'a> Cpu<'a> {
     }
 
     fn clc(&mut self) {
-        unimplemented!();
+        // Boolean argument set to false to clear the flag
+        self.set_flag(Flags::Carry, false);
     }
 
     fn cld(&mut self) {
-        unimplemented!();
+        self.set_flag(Flags::Decimal, false);
     }
 
     fn cli(&mut self) {
-        unimplemented!();
+        self.set_flag(Flags::InterrputDisable, false);
     }
 
     fn clv(&mut self) {
-        unimplemented!();
+        self.set_flag(Flags::Overflow, false);
     }
 
     fn cmp(&mut self) {
@@ -662,11 +696,19 @@ impl<'a> Cpu<'a> {
     }
 
     fn dex(&mut self) {
-        unimplemented!();
+        let result = self.x.wrapping_sub(1);
+        self.x = result;
+
+        self.set_flag(Flags::Zero, result == 0);
+        self.set_flag(Flags::Negative, (result as i8) < 0);
     }
 
     fn dey(&mut self) {
-        unimplemented!();
+        let result = self.y.wrapping_sub(1);
+        self.y = result;
+
+        self.set_flag(Flags::Zero, result == 0);
+        self.set_flag(Flags::Negative, (result as i8) < 0);
     }
 
     fn eor(&mut self) {
@@ -687,11 +729,19 @@ impl<'a> Cpu<'a> {
     }
 
     fn inx(&mut self) {
-        unimplemented!();
+        let result = self.x.wrapping_add(1);
+        self.x = result;
+
+        self.set_flag(Flags::Zero, result == 0);
+        self.set_flag(Flags::Negative, (result as i8) < 0);
     }
 
     fn iny(&mut self) {
-        unimplemented!();
+        let result = self.y.wrapping_add(1);
+        self.y = result;
+
+        self.set_flag(Flags::Zero, result == 0);
+        self.set_flag(Flags::Negative, (result as i8) < 0);
     }
 
     fn jmp(&mut self) {
@@ -753,7 +803,8 @@ impl<'a> Cpu<'a> {
     }
 
     fn nop(&mut self) {
-        unimplemented!();
+        // No operation
+        return;
     }
 
     fn ora(&mut self) {
@@ -882,15 +933,16 @@ impl<'a> Cpu<'a> {
     }
 
     fn sec(&mut self) {
-        unimplemented!();
+        // Boolean parameter set to true to set the flag
+        self.set_flag(Flags::Carry, true);
     }
 
     fn sed(&mut self) {
-        unimplemented!();
+        self.set_flag(Flags::Decimal, true);
     }
 
     fn sei(&mut self) {
-        unimplemented!();
+        self.set_flag(Flags::InterrputDisable, true);
     }
 
     fn sta(&mut self) {
@@ -915,26 +967,41 @@ impl<'a> Cpu<'a> {
     }
 
     fn tax(&mut self) {
-        unimplemented!();
+        self.x = self.a;
+
+        self.set_flag(Flags::Zero, self.x == 0);
+        self.set_flag(Flags::Negative, (self.x as i8) < 0);
     }
 
     fn tay(&mut self) {
-        unimplemented!();
+        self.y = self.a;
+
+        self.set_flag(Flags::Zero, self.y == 0);
+        self.set_flag(Flags::Negative, (self.y as i8) < 0);
     }
 
     fn tsx(&mut self) {
-        unimplemented!();
+        self.x = self.s;
+
+        self.set_flag(Flags::Zero, self.x == 0);
+        self.set_flag(Flags::Negative, (self.x as i8) < 0);
     }
 
     fn txa(&mut self) {
-        unimplemented!();
+        self.a = self.x;
+
+        self.set_flag(Flags::Zero, self.a == 0);
+        self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }
 
     fn txs(&mut self) {
-        unimplemented!();
+        self.s = self.x;
     }
 
     fn tya(&mut self) {
-        unimplemented!();
+        self.a = self.y;
+
+        self.set_flag(Flags::Zero, self.a == 0);
+        self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }
 }
