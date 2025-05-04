@@ -227,6 +227,8 @@ impl<'a> Cpu<'a> {
                 | Nmeonic::TXA
                 | Nmeonic::TXS
                 | Nmeonic::TYA => self.state = State::ExecImpl,
+
+                // These instructions are stack operations and require more than 2 cycles.
                 Nmeonic::BRK
                 | Nmeonic::PHA
                 | Nmeonic::PHP
