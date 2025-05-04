@@ -205,8 +205,9 @@ impl<'a> Cpu<'a> {
             self.cur_mode = mode;
             self.cur_nmeonic = nm;
         } else {
-            todo!("Implement illegal opcodes!");
+            todo!("Illegal opcode");
         }
+
         match self.cur_mode {
             AddressingMode::Accumulator => self.state = State::ExecAcc,
             AddressingMode::Immediate => self.state = State::ExecImm,

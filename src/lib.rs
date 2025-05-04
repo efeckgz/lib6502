@@ -51,9 +51,10 @@ mod tests {
         memory.bytes[4] = 0xA9;
         memory.bytes[5] = 0x08;
 
-        bus.map_device(0x00, 0xFF, &mut memory).unwrap();
+        bus.map_device(0x0000, 0xFFFF, &mut memory).unwrap();
 
         let mut cpu = Cpu::new(&mut bus);
+        cpu.start_sequence();
 
         // Run for 2 cycles
         cpu.cycle();
@@ -94,6 +95,7 @@ mod tests {
 
         bus.map_device(0x0000, 0xFFFF, &mut mem).unwrap();
         let mut cpu = Cpu::new(&mut bus);
+        cpu.start_sequence();
 
         // Run 2 cycles for lda immediate
         cpu.cycle();
@@ -146,6 +148,7 @@ mod tests {
         bus.map_device(0x0000, 0xFFFF, &mut mem).unwrap();
 
         let mut cpu = Cpu::new(&mut bus);
+        cpu.start_sequence();
 
         let mut cycles = 0;
         while cycles < 6 {
@@ -188,6 +191,7 @@ mod tests {
         bus.map_device(0x0000, 0xFFFF, &mut mem).unwrap();
 
         let mut cpu = Cpu::new(&mut bus);
+        cpu.start_sequence();
 
         cpu.cycle();
         cpu.cycle();
@@ -244,6 +248,7 @@ mod tests {
         bus.map_device(0x0000, 0xFFFF, &mut mem).unwrap();
 
         let mut cpu = Cpu::new(&mut bus);
+        cpu.start_sequence();
 
         let mut cycles = 0;
         while cycles < 16 {
