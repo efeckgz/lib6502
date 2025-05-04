@@ -132,6 +132,17 @@ impl<'a> Cpu<'a> {
         }
     }
 
+    // Runs the 7-cycle start sequence.
+    pub fn start_sequence(&mut self) {
+        if let State::ResetHold = self.state {
+            for _ in 0..7 {
+                self.cycle();
+            }
+        } else {
+            panic!("Cannot run start sequence in this state!");
+        }
+    }
+
     fn reset_hold(&mut self) {
         // In read mode during reset, address and data bus are don't care
         self.read = true;

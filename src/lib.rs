@@ -275,10 +275,10 @@ mod tests {
         bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
 
         let mut cpu = Cpu::new(&mut bus);
+        cpu.start_sequence();
 
-        for _ in 0..9 {
-            cpu.cycle();
-        }
+        cpu.cycle();
+        cpu.cycle();
 
         assert_eq!(cpu.a, 0x42);
     }
