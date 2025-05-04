@@ -58,6 +58,7 @@ pub enum State {
     FetchSecondVec,
 
     FetchOpcode, // Fetch opcode state. Every instruction starts here.
+    ExecImpl,    // Execute implied mode (2 cycle)
     ExecImm,     // Immediate addressing mode execution state
     ExecAcc,     // Accumulator addressing mode execution state
     FetchAbsLo,
@@ -209,6 +210,32 @@ impl<'a> Cpu<'a> {
         }
 
         match self.cur_mode {
+            AddressingMode::Implied => match self.cur_nmeonic {
+                Nmeonic::CLC
+                | Nmeonic::CLD
+                | Nmeonic::CLV
+                | Nmeonic::DEX
+                | Nmeonic::DEY
+                | Nmeonic::INX
+                | Nmeonic::INY
+                | Nmeonic::NOP
+                | Nmeonic::SEC
+                | Nmeonic::SEI
+                | Nmeonic::TAX
+                | Nmeonic::TAY
+                | Nmeonic::TSX
+                | Nmeonic::TXA
+                | Nmeonic::TXS
+                | Nmeonic::TYA => self.state = State::ExecImpl,
+                Nmeonic::BRK
+                | Nmeonic::PHA
+                | Nmeonic::PHP
+                | Nmeonic::PLA
+                | Nmeonic::PLP
+                | Nmeonic::RTI
+                | Nmeonic::RTS => todo!("Implied mode stack operations"),
+                _ => panic!("Unrecognized nmeonic for implied mode instruction"),
+            },
             AddressingMode::Accumulator => self.state = State::ExecAcc,
             AddressingMode::Immediate => self.state = State::ExecImm,
             AddressingMode::Absolute => self.state = State::FetchAbsLo,
