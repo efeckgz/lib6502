@@ -261,4 +261,25 @@ mod tests {
 
         assert_eq!(cpu.a, 0x42);
     }
+
+    #[test]
+    fn test_reset() {
+        // Start the cpu from the reset state and load the accumulator a value.
+        // Accumulator will hold the value after 9 cycles - 7 for reset sequence and 2 for lda.
+        let mut bus: Bus<1> = Bus::new();
+        let mut ram = Memory::new();
+
+        let program = [0xA9, 0x42];
+
+        ram.load_program(&program);
+        bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
+
+        let mut cpu = Cpu::new(&mut bus);
+
+        for _ in 0..9 {
+            cpu.cycle();
+        }
+
+        assert_eq!(cpu.a, 0x42);
+    }
 }

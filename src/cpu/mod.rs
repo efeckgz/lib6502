@@ -94,7 +94,7 @@ impl<'a> Cpu<'a> {
             pc: 0,
             p: 0,
             s: 0,
-            state: State::FetchOpcode,
+            state: State::ResetHold, // Start the cpu at the reset state.
             cur_mode: AddressingMode::Implied,
             cur_nmeonic: Nmeonic::BRK,
             bus,
