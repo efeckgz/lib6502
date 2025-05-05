@@ -94,6 +94,7 @@ pub enum Flags {
     Zero = 1,
     InterrputDisable = 2,
     Decimal = 3,
+    Break = 4,
     Overflow = 6,
     Negative = 7,
 }
