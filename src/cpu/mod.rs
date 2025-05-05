@@ -549,6 +549,7 @@ impl<'a> Cpu<'a> {
 
     fn adc(&mut self) {
         // Currently does not handle bcd mode addition.
+        let a_prev = self.a;
         let val = self.data;
         let (mut result, mut overflow) = self.a.overflowing_add(val);
         if self.flag_set(Flags::Carry) {
@@ -561,7 +562,7 @@ impl<'a> Cpu<'a> {
         self.set_flag(Flags::Zero, self.a == 0);
         self.set_flag(
             Flags::Overflow,
-            ((self.a ^ result) & (val ^ result) & 0x80) != 0,
+            ((a_prev ^ result) & (val ^ result) & 0x80) != 0,
         );
         self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }
@@ -917,6 +918,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn sbc(&mut self) {
+        let a_prev = self.a;
         let val = self.data;
         let (mut result, mut overflow) = self.a.overflowing_sub(val);
         if !self.flag_set(Flags::Carry) {
@@ -929,7 +931,7 @@ impl<'a> Cpu<'a> {
         self.set_flag(Flags::Zero, self.a == 0);
         self.set_flag(
             Flags::Overflow,
-            ((self.a ^ result) & (val ^ result) & 0x80) != 0,
+            ((a_prev ^ result) & (val ^ result) & 0x80) != 0,
         );
         self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }

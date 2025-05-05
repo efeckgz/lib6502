@@ -383,6 +383,10 @@ mod tests {
         let mut ram = Memory::new();
 
         let program = [
+            // Program to set the overflow flag
+            0xA9, 0x50, // lda #$50
+            0x69, 0x50, // adc #$50
+            0xB8, // clv
             0x38, // sec
             0x18, // clc
             0xF8, // sed
@@ -415,6 +419,22 @@ mod tests {
 
         let mut cpu = Cpu::new(&mut bus);
         cpu.start_sequence();
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x50);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0xA0);
+        assert!(cpu.flag_set(cpu::Flags::Overflow));
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert!(!cpu.flag_set(cpu::Flags::Overflow));
 
         cpu.cycle();
         cpu.cycle();
