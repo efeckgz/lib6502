@@ -5,15 +5,6 @@ use lookup::{LOOKUP, Nmeonic};
 
 const STACK_BASE: u16 = 0x0100;
 
-const NMI_LO_VEC: u16 = 0xFFFA;
-const NMI_HI_VEC: u16 = 0xFFFB;
-
-const RES_LO_VEC: u16 = 0xFFFC;
-const RES_HI_VEC: u16 = 0xFFFD;
-
-const BRK_LO_VEC: u16 = 0xFFFE;
-const BRK_HI_VEC: u16 = 0xFFFF;
-
 pub struct Cpu<'a> {
     // Internal state
     pub a: u8,   // Accumulator
@@ -24,7 +15,7 @@ pub struct Cpu<'a> {
     pub s: u8,   // Stack pointer
 
     // Internal control
-    pub state: State,
+    state: State,
     cur_mode: AddressingMode,
     cur_nmeonic: Nmeonic,
 
@@ -57,15 +48,15 @@ pub enum AddressingMode {
 }
 
 // Inner state of the processor, used in state machine.
-pub enum State {
+enum State {
     // Reset states
     ResetHold,
     FirstStart,
     SecondStart,
     ThirdStart,
     FourthStart,
-    FetchFirstVec(u16), // The fields here hold the vector to fetch
-    FetchSecondVec(u16),
+    FetchFirstVec(Vectors), // The fields here hold the vector to fetch
+    FetchSecondVec(Vectors),
 
     DummyReadPc, // Read on current pc val, dont increment pc and discard result
 
@@ -110,6 +101,16 @@ pub enum Flags {
     Negative = 7,
 }
 
+#[derive(Clone, Copy)]
+enum Vectors {
+    NmiLo = 0xFFFA,
+    NmiHi = 0xFFFB,
+    ResLo = 0xFFFC,
+    ResHi = 0xFFFD,
+    BrkLo = 0xFFFE,
+    BrkHi = 0xFFFF,
+}
+
 impl<'a> Cpu<'a> {
     pub fn new(bus: &'a mut dyn BusDevice) -> Self {
         Self {
@@ -139,8 +140,8 @@ impl<'a> Cpu<'a> {
             State::SecondStart => self.second_start(),
             State::ThirdStart => self.third_start(),
             State::FourthStart => self.fourth_start(),
-            State::FetchFirstVec(vec) => self.fetch_first_vec(vec),
-            State::FetchSecondVec(vec) => self.fetch_second_vec(vec),
+            State::FetchFirstVec(vector) => self.fetch_first_vec(vector),
+            State::FetchSecondVec(vector) => self.fetch_second_vec(vector),
             State::FetchOpcode => self.fetch_opcode(),
             State::DummyReadPc => self.dummy_read_pc(),
             State::ExecImpl => self.exec_impl(),
@@ -206,34 +207,27 @@ impl<'a> Cpu<'a> {
         self.addr = STACK_BASE + self.s.wrapping_sub(2) as u16;
         self.read = true;
         self.access_bus();
-        self.state = State::FetchFirstVec(RES_LO_VEC);
+        self.state = State::FetchFirstVec(Vectors::ResLo);
     }
 
-    fn fetch_first_vec(&mut self, vec: u16) {
-        // self.addr = 0xFFFC; // Currently hard set to initialization vector, fix for other interrupts in the future
-        // self.addr = match self.state {
-        //     State::FourthStart => RES_LO_VEC,
-        //     State::PushP => BRK_LO_VEC,
-        //     _ => RES_LO_VEC,
-        // };
-        self.addr = vec;
+    fn fetch_first_vec(&mut self, vector: Vectors) {
+        self.addr = vector as u16;
         self.read = true;
         self.access_bus();
         self.latch_u8 = self.data; // Save the value read
 
-        let next_vec = match vec {
-            RES_LO_VEC => RES_HI_VEC,
-            BRK_LO_VEC => BRK_HI_VEC,
-            NMI_LO_VEC => NMI_HI_VEC,
-            _ => panic!("Use enums you idiot!"),
+        let next_vec = match vector {
+            Vectors::NmiLo => Vectors::NmiHi,
+            Vectors::ResLo => Vectors::ResHi,
+            Vectors::BrkLo => Vectors::BrkHi,
+            _ => panic!("Invalid vector given as first!"),
         };
 
         self.state = State::FetchSecondVec(next_vec);
     }
 
-    fn fetch_second_vec(&mut self, vec: u16) {
-        // self.addr = 0xFFFD; // Fix for other interrupts
-        self.addr = vec;
+    fn fetch_second_vec(&mut self, vector: Vectors) {
+        self.addr = vector as u16;
         self.read = true;
         self.access_bus();
         self.pc = ((self.data as u16) << 8) | self.latch_u8 as u16;
@@ -616,7 +610,7 @@ impl<'a> Cpu<'a> {
         self.data = self.p;
         self.read = false;
         self.access_bus();
-        self.state = State::FetchFirstVec(BRK_LO_VEC);
+        self.state = State::FetchFirstVec(Vectors::BrkLo);
     }
 
     fn access_bus(&mut self) {
