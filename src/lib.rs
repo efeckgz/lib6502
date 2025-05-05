@@ -558,6 +558,10 @@ mod tests {
             // p will become 0x80, so 0x80 should be pushed.
             0xA9, 0x80, // lda #$80
             0x08, // php
+            // Stack has 0x80, pla would set A 0x80
+            0x68, // pla
+            // plp, p would have 0x42
+            0x28,
         ];
 
         ram.load_program(&program);
@@ -596,5 +600,21 @@ mod tests {
         assert_eq!(cpu.addr, 0x01FE);
         assert_eq!(cpu.data, 0x80);
         assert_eq!(cpu.s, 0xFD);
+
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x80);
+        assert_eq!(cpu.s, 0xFE);
+
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.p, 0x42);
+        assert_eq!(cpu.s, 0xFF);
     }
 }

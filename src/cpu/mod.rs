@@ -69,6 +69,8 @@ pub enum State {
 
     // Stack operations
     ImplPush, // push stack implied mode
+    ReadIncS, // Read the stack, discard the value, incremenet s
+    ImplPull, // Pull from stack implied mode
 
     // Absolute mode states
     FetchAbsLo,
@@ -133,6 +135,8 @@ impl<'a> Cpu<'a> {
             State::ExecImm => self.exec_imm(),
             State::ExecAcc => self.exec_acc(),
             State::ImplPush => self.impl_push(),
+            State::ReadIncS => self.read_inc_s(),
+            State::ImplPull => self.impl_pull(),
             State::FetchAbsLo => self.fetch_abs_lo(),
             State::FetchAbsHi => self.fetch_abs_hi(),
             State::ExecAbs => self.exec_abs(),
@@ -216,7 +220,7 @@ impl<'a> Cpu<'a> {
         // May adjust later to accomodate more states
         match self.cur_nmeonic {
             Nmeonic::PHP | Nmeonic::PHA => self.state = State::ImplPush,
-            Nmeonic::PLP | Nmeonic::PLA => todo!("Pull from stack state"),
+            Nmeonic::PLP | Nmeonic::PLA => self.state = State::ReadIncS,
             _ => panic!("Unrecognized nmeonic!"),
         }
     }
@@ -347,6 +351,23 @@ impl<'a> Cpu<'a> {
             Nmeonic::PHA => self.pha(),
             Nmeonic::PHP => self.php(),
             _ => panic!("Unrecognized push operation!"),
+        }
+        self.state = State::FetchOpcode;
+    }
+
+    fn read_inc_s(&mut self) {
+        self.addr = STACK_BOTTOM + self.s as u16;
+        self.read = true;
+        self.access_bus();
+        self.s = self.s.wrapping_add(1);
+        self.state = State::ImplPull;
+    }
+
+    fn impl_pull(&mut self) {
+        match self.cur_nmeonic {
+            Nmeonic::PLA => self.pla(),
+            Nmeonic::PLP => self.plp(),
+            _ => panic!("Unrecognized pull operation!"),
         }
         self.state = State::FetchOpcode;
     }
@@ -866,11 +887,20 @@ impl<'a> Cpu<'a> {
     }
 
     fn pla(&mut self) {
-        unimplemented!();
+        self.addr = STACK_BOTTOM + self.s as u16;
+        self.read = true;
+        self.access_bus();
+        self.a = self.data;
+
+        self.set_flag(Flags::Zero, self.a == 0);
+        self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }
 
     fn plp(&mut self) {
-        unimplemented!();
+        self.addr = STACK_BOTTOM + self.s as u16;
+        self.read = true;
+        self.access_bus();
+        self.p = self.data;
     }
 
     fn rol(&mut self) {
