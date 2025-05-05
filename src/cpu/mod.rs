@@ -5,6 +5,15 @@ use lookup::{LOOKUP, Nmeonic};
 
 const STACK_BASE: u16 = 0x0100;
 
+const NMI_LO_VEC: u16 = 0xFFFA;
+const NMI_HI_VEC: u16 = 0xFFFB;
+
+const RES_LO_VEC: u16 = 0xFFFC;
+const RES_HI_VEC: u16 = 0xFFFD;
+
+const BRK_LO_VEC: u16 = 0xFFFE;
+const BRK_HI_VEC: u16 = 0xFFFF;
+
 pub struct Cpu<'a> {
     // Internal state
     pub a: u8,   // Accumulator
@@ -36,15 +45,15 @@ pub enum AddressingMode {
     Relative,
     Implied,
     Indirect,
-    Immediate, // Immidiate
-    ZeroPage,  // Zero Page
-    ZeroPageX, // Zero Page, X
+    Immediate,
+    ZeroPage,
+    ZeroPageX,
     ZeroPageY,
-    Absolute,  // Absolute
-    AbsoluteX, // Absolute, X
-    AbsoluteY, // Absolute, Y
-    IndirectX, // (Indirect, X)
-    IndirectY, // (Indirect), Y
+    Absolute,
+    AbsoluteX,
+    AbsoluteY,
+    IndirectX,
+    IndirectY,
 }
 
 // Inner state of the processor, used in state machine.
@@ -55,8 +64,8 @@ pub enum State {
     SecondStart,
     ThirdStart,
     FourthStart,
-    FetchFirstVec,
-    FetchSecondVec,
+    FetchFirstVec(u16), // The fields here hold the vector to fetch
+    FetchSecondVec(u16),
 
     DummyReadPc, // Read on current pc val, dont increment pc and discard result
 
@@ -84,8 +93,10 @@ pub enum State {
 
     // JSR states - JSR is a 6 cycle absolute instruction but it works differently than others.
     JsrDummyStack, // A dummy stack read is done before storing the pc
-    JsrStorePcH,
-    JsrStorePcL,
+    PushPcH,
+    PushPcL,
+
+    PushP, // Push processor status register to the stack
 }
 
 // Status flags. Used in the processor status register p.
@@ -128,8 +139,8 @@ impl<'a> Cpu<'a> {
             State::SecondStart => self.second_start(),
             State::ThirdStart => self.third_start(),
             State::FourthStart => self.fourth_start(),
-            State::FetchFirstVec => self.fetch_first_vec(),
-            State::FetchSecondVec => self.fetch_second_vec(),
+            State::FetchFirstVec(vec) => self.fetch_first_vec(vec),
+            State::FetchSecondVec(vec) => self.fetch_second_vec(vec),
             State::FetchOpcode => self.fetch_opcode(),
             State::DummyReadPc => self.dummy_read_pc(),
             State::ExecImpl => self.exec_impl(),
@@ -145,8 +156,9 @@ impl<'a> Cpu<'a> {
             State::RmwDummyWrite => self.rmw_dummy_write(),
             State::RmwExec => self.rmw_exec(),
             State::JsrDummyStack => self.jsr_dummy_stack(),
-            State::JsrStorePcH => self.jsr_store_pch(),
-            State::JsrStorePcL => self.jsr_store_pcl(),
+            State::PushPcH => self.push_pch(),
+            State::PushPcL => self.push_pcl(),
+            State::PushP => self.push_p(),
             _ => todo!("Implement remaining states!"),
         }
     }
@@ -194,19 +206,34 @@ impl<'a> Cpu<'a> {
         self.addr = STACK_BASE + self.s.wrapping_sub(2) as u16;
         self.read = true;
         self.access_bus();
-        self.state = State::FetchFirstVec;
+        self.state = State::FetchFirstVec(RES_LO_VEC);
     }
 
-    fn fetch_first_vec(&mut self) {
-        self.addr = 0xFFFC; // Currently hard set to initialization vector, fix for other interrupts in the future
+    fn fetch_first_vec(&mut self, vec: u16) {
+        // self.addr = 0xFFFC; // Currently hard set to initialization vector, fix for other interrupts in the future
+        // self.addr = match self.state {
+        //     State::FourthStart => RES_LO_VEC,
+        //     State::PushP => BRK_LO_VEC,
+        //     _ => RES_LO_VEC,
+        // };
+        self.addr = vec;
         self.read = true;
         self.access_bus();
         self.latch_u8 = self.data; // Save the value read
-        self.state = State::FetchSecondVec;
+
+        let next_vec = match vec {
+            RES_LO_VEC => RES_HI_VEC,
+            BRK_LO_VEC => BRK_HI_VEC,
+            NMI_LO_VEC => NMI_HI_VEC,
+            _ => panic!("Use enums you idiot!"),
+        };
+
+        self.state = State::FetchSecondVec(next_vec);
     }
 
-    fn fetch_second_vec(&mut self) {
-        self.addr = 0xFFFD; // Fix for other interrupts
+    fn fetch_second_vec(&mut self, vec: u16) {
+        // self.addr = 0xFFFD; // Fix for other interrupts
+        self.addr = vec;
         self.read = true;
         self.access_bus();
         self.pc = ((self.data as u16) << 8) | self.latch_u8 as u16;
@@ -222,6 +249,7 @@ impl<'a> Cpu<'a> {
         match self.cur_nmeonic {
             Nmeonic::PHP | Nmeonic::PHA => self.state = State::ImplPush,
             Nmeonic::PLP | Nmeonic::PLA => self.state = State::ReadIncS,
+            Nmeonic::BRK => self.state = State::PushPcH,
             _ => panic!("Unrecognized nmeonic!"),
         }
     }
@@ -267,7 +295,11 @@ impl<'a> Cpu<'a> {
                     self.state = State::DummyReadPc
                 }
 
-                Nmeonic::BRK | Nmeonic::RTI => todo!("brk and rti instructions"),
+                Nmeonic::BRK => {
+                    self.brk();
+                    self.state = State::DummyReadPc;
+                }
+                Nmeonic::RTI => todo!("rti instruction"),
                 _ => panic!("Unrecognized nmeonic for implied mode instruction"),
             },
             AddressingMode::Accumulator => self.state = State::ExecAcc,
@@ -544,27 +576,32 @@ impl<'a> Cpu<'a> {
         self.addr = STACK_BASE + self.s as u16;
         self.read = true;
         self.access_bus(); // The value read is discarded
-        self.state = State::JsrStorePcH;
+        self.state = State::PushPcH;
     }
 
-    fn jsr_store_pch(&mut self) {
+    fn push_pch(&mut self) {
         self.addr = STACK_BASE + self.s as u16;
         self.data = ((self.pc & 0xFF00) >> 7) as u8;
         self.read = false;
         self.access_bus();
         self.s = self.s.wrapping_sub(1);
         // self.push_stack(((self.pc & 0xFF00) >> 7) as u8);
-        self.state = State::JsrStorePcL;
+        self.state = State::PushPcL;
     }
 
-    fn jsr_store_pcl(&mut self) {
+    fn push_pcl(&mut self) {
         self.addr = STACK_BASE + self.s as u16;
         self.data = (self.pc & 0xFF) as u8;
         self.read = false;
         self.access_bus();
         self.s = self.s.wrapping_sub(1);
         // self.push_stack((self.pc & 0xFF) as u8);
-        self.state = State::FetchAbsHi;
+
+        if let Nmeonic::BRK = self.cur_nmeonic {
+            self.state = State::PushP;
+        } else {
+            self.state = State::FetchAbsHi;
+        }
     }
 
     fn jsr_read(&mut self) {
@@ -572,6 +609,14 @@ impl<'a> Cpu<'a> {
         self.read = true;
         self.access_bus();
         self.state = State::FetchOpcode;
+    }
+
+    fn push_p(&mut self) {
+        self.addr = STACK_BASE + self.s as u16;
+        self.data = self.p;
+        self.read = false;
+        self.access_bus();
+        self.state = State::FetchFirstVec(BRK_LO_VEC);
     }
 
     fn access_bus(&mut self) {
@@ -700,7 +745,8 @@ impl<'a> Cpu<'a> {
     }
 
     fn brk(&mut self) {
-        unimplemented!();
+        // Set the break flag in the status register before pushing it to stack
+        self.set_flag(Flags::Break, true);
     }
 
     fn bvc(&mut self) {

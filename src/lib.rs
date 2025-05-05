@@ -33,6 +33,8 @@ impl Memory {
 
 #[cfg(test)]
 mod tests {
+    use crate::cpu::Flags;
+
     use super::*;
 
     use bus::Bus;
@@ -616,5 +618,63 @@ mod tests {
 
         assert_eq!(cpu.p, 0x42);
         assert_eq!(cpu.s, 0xFF);
+    }
+
+    #[test]
+    fn brk_works() {
+        // Load A, verify that it works.
+        // brk, interrupt routine Loads A something else, verify it works.
+        let mut bus: Bus<1> = Bus::new();
+        let mut ram = Memory::new();
+        let mut program = [0_u8; 65536];
+
+        // Reset vectors
+        program[0xFFFC] = 0x00;
+        program[0xFFFD] = 0x06;
+
+        // brk vectors
+        program[0xFFFE] = 0x00;
+        program[0xFFFF] = 0x07;
+
+        // lda #$42
+        program[0x0600] = 0xA9;
+        program[0x0601] = 0x42;
+
+        // brk
+        program[0x0602] = 0x00;
+
+        // lda #$80
+        program[0x0700] = 0xA9;
+        program[0x0701] = 0x80;
+
+        ram.load_program(&program);
+        bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
+
+        let mut cpu = Cpu::new(&mut bus);
+        cpu.start_sequence();
+
+        assert_eq!(cpu.pc, 0x0600);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x42);
+        assert_eq!(cpu.pc, 0x0602);
+
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.pc, 0x0700);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x80);
+        assert!(cpu.flag_set(Flags::Negative));
     }
 }
