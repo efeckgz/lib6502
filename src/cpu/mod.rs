@@ -49,6 +49,7 @@ pub enum AddressingMode {
 
 // Inner state of the processor, used in state machine.
 pub enum State {
+    // Reset states
     ResetHold,
     FirstStart,
     SecondStart,
@@ -57,10 +58,19 @@ pub enum State {
     FetchFirstVec,
     FetchSecondVec,
 
+    DummyReadPc, // Read on current pc val, dont increment pc and discard result
+
     FetchOpcode, // Fetch opcode state. Every instruction starts here.
-    ExecImpl,    // Execute implied mode (2 cycle)
-    ExecImm,     // Immediate addressing mode execution state
-    ExecAcc,     // Accumulator addressing mode execution state
+
+    // 2 cycle of 2 cycle ops
+    ExecImpl, // Execute implied mode (2 cycle)
+    ExecImm,  // Immediate addressing mode execution state
+    ExecAcc,  // Accumulator addressing mode execution state
+
+    // Stack operations
+    ImplPush, // push stack implied mode
+
+    // Absolute mode states
     FetchAbsLo,
     FetchAbsHi,
     ExecAbs,
@@ -118,9 +128,11 @@ impl<'a> Cpu<'a> {
             State::FetchFirstVec => self.fetch_first_vec(),
             State::FetchSecondVec => self.fetch_second_vec(),
             State::FetchOpcode => self.fetch_opcode(),
+            State::DummyReadPc => self.dummy_read_pc(),
             State::ExecImpl => self.exec_impl(),
             State::ExecImm => self.exec_imm(),
             State::ExecAcc => self.exec_acc(),
+            State::ImplPush => self.impl_push(),
             State::FetchAbsLo => self.fetch_abs_lo(),
             State::FetchAbsHi => self.fetch_abs_hi(),
             State::ExecAbs => self.exec_abs(),
@@ -196,6 +208,19 @@ impl<'a> Cpu<'a> {
         self.state = State::FetchOpcode;
     }
 
+    fn dummy_read_pc(&mut self) {
+        self.addr = self.pc;
+        self.read = true;
+        self.access_bus();
+
+        // May adjust later to accomodate more states
+        match self.cur_nmeonic {
+            Nmeonic::PHP | Nmeonic::PHA => self.state = State::ImplPush,
+            Nmeonic::PLP | Nmeonic::PLA => todo!("Pull from stack state"),
+            _ => panic!("Unrecognized nmeonic!"),
+        }
+    }
+
     fn fetch_opcode(&mut self) {
         self.addr = self.pc;
         self.read = true;
@@ -233,13 +258,11 @@ impl<'a> Cpu<'a> {
                 | Nmeonic::TYA => self.state = State::ExecImpl,
 
                 // These instructions are stack operations and require more than 2 cycles.
-                Nmeonic::BRK
-                | Nmeonic::PHA
-                | Nmeonic::PHP
-                | Nmeonic::PLA
-                | Nmeonic::PLP
-                | Nmeonic::RTI
-                | Nmeonic::RTS => todo!("Implied mode stack operations"),
+                Nmeonic::PHA | Nmeonic::PHP | Nmeonic::PLA | Nmeonic::PLP | Nmeonic::RTS => {
+                    self.state = State::DummyReadPc
+                }
+
+                Nmeonic::BRK | Nmeonic::RTI => todo!("brk and rti instructions"),
                 _ => panic!("Unrecognized nmeonic for implied mode instruction"),
             },
             AddressingMode::Accumulator => self.state = State::ExecAcc,
@@ -315,6 +338,15 @@ impl<'a> Cpu<'a> {
             Nmeonic::ROL => self.rol(),
             Nmeonic::ROR => self.ror(),
             _ => panic!("Unrecognized opcode-addressing mode-nmeonic combination!"),
+        }
+        self.state = State::FetchOpcode;
+    }
+
+    fn impl_push(&mut self) {
+        match self.cur_nmeonic {
+            Nmeonic::PHA => self.pha(),
+            Nmeonic::PHP => self.php(),
+            _ => panic!("Unrecognized push operation!"),
         }
         self.state = State::FetchOpcode;
     }
@@ -818,11 +850,19 @@ impl<'a> Cpu<'a> {
     }
 
     fn pha(&mut self) {
-        unimplemented!();
+        self.addr = STACK_BOTTOM + self.s as u16;
+        self.data = self.a;
+        self.read = false;
+        self.access_bus();
+        self.s = self.s.wrapping_sub(1);
     }
 
     fn php(&mut self) {
-        unimplemented!();
+        self.addr = STACK_BOTTOM + self.s as u16;
+        self.data = self.p;
+        self.read = false;
+        self.access_bus();
+        self.s = self.s.wrapping_sub(1);
     }
 
     fn pla(&mut self) {

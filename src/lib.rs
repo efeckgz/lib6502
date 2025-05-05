@@ -33,8 +33,6 @@ impl Memory {
 
 #[cfg(test)]
 mod tests {
-    use core::iter::once_with;
-
     use super::*;
 
     use bus::Bus;
@@ -545,5 +543,58 @@ mod tests {
         cpu.cycle();
 
         assert_eq!(cpu.s, 5);
+    }
+
+    #[test]
+    fn implied_stack() {
+        // Test the implied mode stack operations
+        let mut bus: Bus<1> = Bus::new();
+        let mut ram = Memory::new();
+
+        let program = [
+            0xA9, 0x42, // lda #$42
+            0x48, // pha
+            // To test php, will load 0x80 to A to set neagtive flag which is bit 7 of p.
+            // p will become 0x80, so 0x80 should be pushed.
+            0xA9, 0x80, // lda #$80
+            0x08, // php
+        ];
+
+        ram.load_program(&program);
+        bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
+
+        let mut cpu = Cpu::new(&mut bus);
+        cpu.start_sequence();
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x42);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.pc, 3);
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x01FF);
+        assert_eq!(cpu.data, 0x42);
+        assert_eq!(cpu.pc, 3);
+        assert_eq!(cpu.s, 0xFE);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x80);
+        assert!(cpu.flag_set(cpu::Flags::Negative));
+        assert_eq!(cpu.p, 0x80);
+
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.addr, 0x01FE);
+        assert_eq!(cpu.data, 0x80);
+        assert_eq!(cpu.s, 0xFD);
     }
 }
