@@ -216,12 +216,14 @@ impl<'a> Cpu<'a> {
                 Nmeonic::CLC
                 | Nmeonic::CLD
                 | Nmeonic::CLV
+                | Nmeonic::CLI
                 | Nmeonic::DEX
                 | Nmeonic::DEY
                 | Nmeonic::INX
                 | Nmeonic::INY
                 | Nmeonic::NOP
                 | Nmeonic::SEC
+                | Nmeonic::SED
                 | Nmeonic::SEI
                 | Nmeonic::TAX
                 | Nmeonic::TAY
@@ -274,6 +276,8 @@ impl<'a> Cpu<'a> {
             Nmeonic::TYA => self.tya(),
             _ => panic!("Unrecognized nmeonic for 2 cycle implied mode!"),
         }
+
+        self.state = State::FetchOpcode;
     }
 
     fn exec_imm(&mut self) {

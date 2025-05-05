@@ -33,6 +33,8 @@ impl Memory {
 
 #[cfg(test)]
 mod tests {
+    use core::iter::once_with;
+
     use super::*;
 
     use bus::Bus;
@@ -372,5 +374,156 @@ mod tests {
         cpu.cycle();
 
         assert_eq!(cpu.a, 0x15);
+    }
+
+    #[test]
+    fn implied_tests() {
+        // This test tests various 1 byte 2 cycle implied addressing mode instructions.
+        let mut bus: Bus<1> = Bus::new();
+        let mut ram = Memory::new();
+
+        let program = [
+            0x38, // sec
+            0x18, // clc
+            0xF8, // sed
+            0xD8, // cld
+            0x78, // sei
+            0x58, // cli
+            // Load values to index registers to test increment/decrement
+            0xA2, 0x05, // ldx #$05
+            0xA0, 0x05, // ldy #$05
+            0xE8, // inx
+            0xC8, // iny
+            0xCA, // dex
+            0x88, // dey
+            // Load accumulator to test accumulator transfer instructions.
+            0xA9, 0x42, // lda #$42
+            0xAA, // tax
+            0xA8, // tay
+            // Load index registers to test transfer instructions.
+            0xA2, 0x05, // ldx #$05
+            0xA0, 0x06, // ldy #$06
+            0x8A, // txa
+            0x98, // tya
+            0xBA, // tsx
+            0xA2, 0x05, // ldx #$05
+            0x9A, // txs
+        ];
+
+        ram.load_program(&program);
+        bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
+
+        let mut cpu = Cpu::new(&mut bus);
+        cpu.start_sequence();
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert!(cpu.flag_set(cpu::Flags::Carry));
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert!(!cpu.flag_set(cpu::Flags::Carry));
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert!(cpu.flag_set(cpu::Flags::Decimal));
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert!(!cpu.flag_set(cpu::Flags::Decimal));
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert!(cpu.flag_set(cpu::Flags::InterrputDisable));
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert!(!cpu.flag_set(cpu::Flags::InterrputDisable));
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.x, 5);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.y, 5);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.x, 6);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.y, 6);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.x, 5);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.y, 5);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x42);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.x, 0x42);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.y, 0x42);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.x, 5);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.y, 6);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 5);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 6);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.x, 0xFF);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.x, 5);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.s, 5);
     }
 }
