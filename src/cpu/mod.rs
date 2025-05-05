@@ -548,12 +548,22 @@ impl<'a> Cpu<'a> {
     }
 
     fn jsr_store_pch(&mut self) {
-        self.push_stack(((self.pc & 0xFF00) >> 7) as u8);
+        self.addr = STACK_BASE + self.s as u16;
+        self.data = ((self.pc & 0xFF00) >> 7) as u8;
+        self.read = false;
+        self.access_bus();
+        self.s = self.s.wrapping_sub(1);
+        // self.push_stack(((self.pc & 0xFF00) >> 7) as u8);
         self.state = State::JsrStorePcL;
     }
 
     fn jsr_store_pcl(&mut self) {
-        self.push_stack((self.pc & 0xFF) as u8);
+        self.addr = STACK_BASE + self.s as u16;
+        self.data = (self.pc & 0xFF) as u8;
+        self.read = false;
+        self.access_bus();
+        self.s = self.s.wrapping_sub(1);
+        // self.push_stack((self.pc & 0xFF) as u8);
         self.state = State::FetchAbsHi;
     }
 
