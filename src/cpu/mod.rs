@@ -3,7 +3,7 @@ mod lookup;
 use crate::bus::BusDevice;
 use lookup::{LOOKUP, Nmeonic};
 
-const STACK_BOTTOM: u16 = 0x0100;
+const STACK_BASE: u16 = 0x0100;
 
 pub struct Cpu<'a> {
     // Internal state
@@ -176,21 +176,21 @@ impl<'a> Cpu<'a> {
     }
 
     fn second_start(&mut self) {
-        self.addr = STACK_BOTTOM + self.s as u16;
+        self.addr = STACK_BASE + self.s as u16;
         self.read = true;
         self.access_bus();
         self.state = State::ThirdStart;
     }
 
     fn third_start(&mut self) {
-        self.addr = STACK_BOTTOM + self.s.wrapping_sub(1) as u16;
+        self.addr = STACK_BASE + self.s.wrapping_sub(1) as u16;
         self.read = true;
         self.access_bus();
         self.state = State::FourthStart;
     }
 
     fn fourth_start(&mut self) {
-        self.addr = STACK_BOTTOM + self.s.wrapping_sub(2) as u16;
+        self.addr = STACK_BASE + self.s.wrapping_sub(2) as u16;
         self.read = true;
         self.access_bus();
         self.state = State::FetchFirstVec;
@@ -356,7 +356,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn read_inc_s(&mut self) {
-        self.addr = STACK_BOTTOM + self.s as u16;
+        self.addr = STACK_BASE + self.s as u16;
         self.read = true;
         self.access_bus();
         self.s = self.s.wrapping_add(1);
@@ -540,7 +540,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn jsr_dummy_stack(&mut self) {
-        self.addr = STACK_BOTTOM + self.s as u16;
+        self.addr = STACK_BASE + self.s as u16;
         self.read = true;
         self.access_bus(); // The value read is discarded
         self.state = State::JsrStorePcH;
@@ -572,7 +572,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn push_stack(&mut self, val: u8) {
-        self.addr = STACK_BOTTOM + self.s as u16;
+        self.addr = STACK_BASE + self.s as u16;
         self.data = val;
         self.read = false;
         self.access_bus();
@@ -580,7 +580,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn pop_stack(&mut self) {
-        self.addr = STACK_BOTTOM + self.s as u16;
+        self.addr = STACK_BASE + self.s as u16;
         self.read = true;
         self.access_bus(); // Stack top is at self.data now
         self.s = self.s.wrapping_add(1);
@@ -871,7 +871,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn pha(&mut self) {
-        self.addr = STACK_BOTTOM + self.s as u16;
+        self.addr = STACK_BASE + self.s as u16;
         self.data = self.a;
         self.read = false;
         self.access_bus();
@@ -879,7 +879,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn php(&mut self) {
-        self.addr = STACK_BOTTOM + self.s as u16;
+        self.addr = STACK_BASE + self.s as u16;
         self.data = self.p;
         self.read = false;
         self.access_bus();
@@ -887,7 +887,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn pla(&mut self) {
-        self.addr = STACK_BOTTOM + self.s as u16;
+        self.addr = STACK_BASE + self.s as u16;
         self.read = true;
         self.access_bus();
         self.a = self.data;
@@ -897,7 +897,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn plp(&mut self) {
-        self.addr = STACK_BOTTOM + self.s as u16;
+        self.addr = STACK_BASE + self.s as u16;
         self.read = true;
         self.access_bus();
         self.p = self.data;
