@@ -585,7 +585,8 @@ impl<'a> Cpu<'a> {
 
     fn push_pch(&mut self) {
         self.addr = STACK_BASE + self.s as u16;
-        self.data = ((self.pc & 0xFF00) >> 7) as u8;
+        // self.data = ((self.pc & 0xFF00) >> 7) as u8;
+        self.data = (self.pc >> 8) as u8;
         self.read = false;
         self.access_bus();
         self.s = self.s.wrapping_sub(1);
@@ -642,6 +643,7 @@ impl<'a> Cpu<'a> {
         self.data = self.p;
         self.read = false;
         self.access_bus();
+        self.s = self.s.wrapping_sub(1);
         self.state = State::FetchFirstVec(Vectors::BrkLo);
     }
 

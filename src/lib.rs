@@ -640,12 +640,12 @@ mod tests {
         program[0x0600] = 0xA9;
         program[0x0601] = 0x42;
 
-        // lda #$50
-        program[0x0602] = 0xA9;
-        program[0x0603] = 0x50;
-
         // brk
         program[0x0602] = 0x00;
+
+        // lda #$50
+        program[0x0603] = 0xA9;
+        program[0x0604] = 0x50;
 
         // lda #$80
         program[0x0700] = 0xA9;
@@ -668,16 +668,60 @@ mod tests {
 
         assert_eq!(cpu.a, 0x42);
         assert_eq!(cpu.pc, 0x0602);
+        assert_eq!(cpu.p, 0); // No flags set
 
         // brk
+        // Fetch the opcode
         cpu.cycle();
-        cpu.cycle();
-        cpu.cycle();
-        cpu.cycle();
-        cpu.cycle();
-        cpu.cycle();
-        cpu.cycle();
+        assert_eq!(cpu.addr, 0x0602);
+        assert_eq!(cpu.data, 0x00);
+        assert_eq!(cpu.pc, 0x0603);
+        assert!(cpu.flag_set(Flags::Break)); // Is the break flag supposed to be set this cycle?
 
+        let p_before = cpu.p;
+
+        // Read pc, dont inc, discard data
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x0603);
+        assert_eq!(cpu.data, 0xA9);
+        assert_eq!(cpu.pc, 0x0603);
+
+        // Push pc hi to the stack
+        cpu.cycle();
+        assert_eq!(cpu.addr - 1, 0x0100 + cpu.s as u16); // Address bus should containg s + 1, s is decremented this cycle
+        assert_eq!(cpu.data, 0x06);
+        assert!(!cpu.read);
+        assert_eq!(cpu.pc, 0x0603);
+        assert_eq!(cpu.s, 0xFE); // s decremented
+
+        // Push pc lo to the stack
+        cpu.cycle();
+        assert_eq!(cpu.addr - 1, 0x0100 + cpu.s as u16);
+        assert_eq!(cpu.data, 0x03);
+        assert!(!cpu.read);
+        assert_eq!(cpu.pc, 0x0603);
+        assert_eq!(cpu.s, 0xFD);
+
+        // Push status register to the stack
+        cpu.cycle();
+        assert_eq!(cpu.addr - 1, 0x0100 + cpu.s as u16);
+        assert_eq!(cpu.data, cpu.p);
+        assert!(!cpu.read);
+        assert_eq!(cpu.pc, 0x0603);
+        assert_eq!(cpu.s, 0xFC);
+
+        // Fetch low byte of interrupt vector from FFFE
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0xFFFE);
+        assert_eq!(cpu.data, 0x00);
+        assert!(cpu.read);
+        assert_eq!(cpu.pc, 0x0603);
+
+        // Fetch high byte of interrupt vector from FFFF
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0xFFFF);
+        assert_eq!(cpu.data, 0x07);
+        assert!(cpu.read);
         assert_eq!(cpu.pc, 0x0700);
 
         // lda #$80
@@ -687,27 +731,55 @@ mod tests {
         assert_eq!(cpu.a, 0x80);
         assert!(cpu.flag_set(Flags::Negative));
         assert_eq!(cpu.pc, 0x0702);
+        assert_ne!(cpu.p, 0); // status register changed
 
         // rti
+        // Fetch opcode
         cpu.cycle();
         assert_eq!(cpu.addr, 0x0702);
         assert_eq!(cpu.data, 0x40);
+        assert_eq!(cpu.pc, 0x0703);
 
+        // Read and discard pc, dont increment
         cpu.cycle();
         assert_eq!(cpu.addr, 0x0703);
         assert_eq!(cpu.data, 0x00);
         assert_eq!(cpu.pc, 0x0703); // pc is not incremented in this cycle
 
+        // Read and discard stack, inc s
         cpu.cycle();
-        assert_eq!(cpu.addr, 0x0100 + cpu.s as u16);
+        assert_eq!(cpu.addr + 1, 0x0100 + cpu.s as u16);
         assert_eq!(cpu.data, 0x00);
+        assert_eq!(cpu.s, 0xFD);
 
-        // cpu.cycle();
-        // cpu.cycle();
-        // cpu.cycle();
-        // cpu.cycle();
-        // cpu.cycle();
+        // Pull p from stack
+        cpu.cycle();
+        assert_eq!(cpu.addr + 1, 0x0100 + cpu.s as u16);
+        assert!(cpu.read);
+        assert_eq!(cpu.data, p_before);
+        assert_eq!(cpu.s, 0xFE);
 
-        // assert_eq!(cpu.pc, 0x0602);
+        // Pull pcl from stack
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x01FE);
+        assert!(cpu.read);
+        assert_eq!(cpu.data, 0x03);
+        assert_eq!(cpu.s, 0xFF);
+        assert_eq!(cpu.pc, 0x0703);
+
+        // Pull pchi from stack
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x01FF);
+        assert!(cpu.read);
+        assert_eq!(cpu.data, 0x06);
+        assert_eq!(cpu.s, 0x00); // This cannot be right
+        assert_eq!(cpu.pc, 0x0603);
+        assert_eq!(cpu.p, p_before); // Status register pulled
+
+        // lda #$50
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x50);
     }
 }
