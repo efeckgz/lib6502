@@ -121,7 +121,7 @@ impl<'a> Cpu<'a> {
             y: 0,
             pc: 0,
             p: 0,
-            s: 0xFF,                 // Start at stack top
+            s: 0xFF,                 // Start at stack top - not the specified behavior
             state: State::ResetHold, // Start the cpu at the reset state.
             cur_mode: AddressingMode::Implied,
             cur_nmeonic: Nmeonic::BRK,

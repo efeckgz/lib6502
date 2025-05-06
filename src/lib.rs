@@ -688,7 +688,7 @@ mod tests {
 
         // Push pc hi to the stack
         cpu.cycle();
-        assert_eq!(cpu.addr - 1, 0x0100 + cpu.s as u16); // Address bus should containg s + 1, s is decremented this cycle
+        assert_eq!(cpu.addr, 0x01FF); // Address bus should containg s + 1, s is decremented this cycle
         assert_eq!(cpu.data, 0x06);
         assert!(!cpu.read);
         assert_eq!(cpu.pc, 0x0603);
@@ -696,7 +696,7 @@ mod tests {
 
         // Push pc lo to the stack
         cpu.cycle();
-        assert_eq!(cpu.addr - 1, 0x0100 + cpu.s as u16);
+        assert_eq!(cpu.addr, 0x01FE);
         assert_eq!(cpu.data, 0x03);
         assert!(!cpu.read);
         assert_eq!(cpu.pc, 0x0603);
@@ -704,7 +704,7 @@ mod tests {
 
         // Push status register to the stack
         cpu.cycle();
-        assert_eq!(cpu.addr - 1, 0x0100 + cpu.s as u16);
+        assert_eq!(cpu.addr, 0x01FD);
         assert_eq!(cpu.data, cpu.p);
         assert!(!cpu.read);
         assert_eq!(cpu.pc, 0x0603);
@@ -748,13 +748,13 @@ mod tests {
 
         // Read and discard stack, inc s
         cpu.cycle();
-        assert_eq!(cpu.addr + 1, 0x0100 + cpu.s as u16);
+        assert_eq!(cpu.addr, 0x01FC);
         assert_eq!(cpu.data, 0x00);
         assert_eq!(cpu.s, 0xFD);
 
         // Pull p from stack
         cpu.cycle();
-        assert_eq!(cpu.addr + 1, 0x0100 + cpu.s as u16);
+        assert_eq!(cpu.addr, 0x01FD);
         assert!(cpu.read);
         assert_eq!(cpu.data, p_before);
         assert_eq!(cpu.s, 0xFE);
@@ -772,7 +772,7 @@ mod tests {
         assert_eq!(cpu.addr, 0x01FF);
         assert!(cpu.read);
         assert_eq!(cpu.data, 0x06);
-        assert_eq!(cpu.s, 0x00); // This cannot be right
+        assert_eq!(cpu.s, 0x00); // Stack underflow?
         assert_eq!(cpu.pc, 0x0603);
         assert_eq!(cpu.p, p_before); // Status register pulled
 
