@@ -86,6 +86,8 @@ enum State {
     JsrDummyStack, // A dummy stack read is done before storing the pc
     PushPcH,
     PushPcL,
+    PullPcH,
+    PullPcL,
 
     PushP, // Push processor status register to the stack
 }
@@ -159,6 +161,8 @@ impl<'a> Cpu<'a> {
             State::JsrDummyStack => self.jsr_dummy_stack(),
             State::PushPcH => self.push_pch(),
             State::PushPcL => self.push_pcl(),
+            State::PullPcH => self.pull_pch(),
+            State::PullPcL => self.pull_pcl(),
             State::PushP => self.push_p(),
             _ => todo!("Implement remaining states!"),
         }
@@ -242,7 +246,7 @@ impl<'a> Cpu<'a> {
         // May adjust later to accomodate more states
         match self.cur_nmeonic {
             Nmeonic::PHP | Nmeonic::PHA => self.state = State::ImplPush,
-            Nmeonic::PLP | Nmeonic::PLA => self.state = State::ReadIncS,
+            Nmeonic::PLP | Nmeonic::PLA | Nmeonic::RTI => self.state = State::ReadIncS,
             Nmeonic::BRK => self.state = State::PushPcH,
             _ => panic!("Unrecognized nmeonic!"),
         }
@@ -293,7 +297,7 @@ impl<'a> Cpu<'a> {
                     self.brk();
                     self.state = State::DummyReadPc;
                 }
-                Nmeonic::RTI => todo!("rti instruction"),
+                Nmeonic::RTI => self.state = State::DummyReadPc,
                 _ => panic!("Unrecognized nmeonic for implied mode instruction"),
             },
             AddressingMode::Accumulator => self.state = State::ExecAcc,
@@ -394,9 +398,15 @@ impl<'a> Cpu<'a> {
         match self.cur_nmeonic {
             Nmeonic::PLA => self.pla(),
             Nmeonic::PLP => self.plp(),
+            Nmeonic::RTI => self.rti(), // Only pull the p register from stack in this function.
             _ => panic!("Unrecognized pull operation!"),
         }
-        self.state = State::FetchOpcode;
+
+        if let Nmeonic::RTI = self.cur_nmeonic {
+            self.state = State::PullPcL;
+        } else {
+            self.state = State::FetchOpcode;
+        }
     }
 
     fn fetch_abs_lo(&mut self) {
@@ -603,6 +613,28 @@ impl<'a> Cpu<'a> {
         self.read = true;
         self.access_bus();
         self.state = State::FetchOpcode;
+    }
+
+    fn pull_pch(&mut self) {
+        let lo = self.latch_u8 as u16;
+        self.addr = STACK_BASE + self.s as u16;
+        self.read = true;
+        self.access_bus(); // Program counter hi in data bus
+        self.s = self.s.wrapping_add(1);
+        let hi = self.data as u16;
+
+        self.pc = (hi << 8) | lo;
+
+        self.state = State::FetchOpcode;
+    }
+
+    fn pull_pcl(&mut self) {
+        self.addr = STACK_BASE + self.s as u16;
+        self.read = true;
+        self.access_bus(); // Program counter lo in data bus
+        self.s = self.s.wrapping_add(1);
+        self.latch_u8 = self.data;
+        self.state = State::PullPcH;
     }
 
     fn push_p(&mut self) {
@@ -1031,7 +1063,11 @@ impl<'a> Cpu<'a> {
     }
 
     fn rti(&mut self) {
-        unimplemented!();
+        self.addr = STACK_BASE + self.s as u16;
+        self.read = true;
+        self.access_bus(); // P register in data bus
+        self.s = self.s.wrapping_add(1);
+        self.p = self.data;
     }
 
     fn rts(&mut self) {

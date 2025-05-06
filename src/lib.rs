@@ -621,7 +621,7 @@ mod tests {
     }
 
     #[test]
-    fn brk_works() {
+    fn brk_rti_works() {
         // Load A, verify that it works.
         // brk, interrupt routine Loads A something else, verify it works.
         let mut bus: Bus<1> = Bus::new();
@@ -640,12 +640,19 @@ mod tests {
         program[0x0600] = 0xA9;
         program[0x0601] = 0x42;
 
+        // lda #$50
+        program[0x0602] = 0xA9;
+        program[0x0603] = 0x50;
+
         // brk
         program[0x0602] = 0x00;
 
         // lda #$80
         program[0x0700] = 0xA9;
         program[0x0701] = 0x80;
+
+        // rti
+        program[0x0702] = 0x40;
 
         ram.load_program(&program);
         bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
@@ -655,12 +662,14 @@ mod tests {
 
         assert_eq!(cpu.pc, 0x0600);
 
+        // lda #$42
         cpu.cycle();
         cpu.cycle();
 
         assert_eq!(cpu.a, 0x42);
         assert_eq!(cpu.pc, 0x0602);
 
+        // brk
         cpu.cycle();
         cpu.cycle();
         cpu.cycle();
@@ -671,10 +680,34 @@ mod tests {
 
         assert_eq!(cpu.pc, 0x0700);
 
+        // lda #$80
         cpu.cycle();
         cpu.cycle();
 
         assert_eq!(cpu.a, 0x80);
         assert!(cpu.flag_set(Flags::Negative));
+        assert_eq!(cpu.pc, 0x0702);
+
+        // rti
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x0702);
+        assert_eq!(cpu.data, 0x40);
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x0703);
+        assert_eq!(cpu.data, 0x00);
+        assert_eq!(cpu.pc, 0x0703); // pc is not incremented in this cycle
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x0100 + cpu.s as u16);
+        assert_eq!(cpu.data, 0x00);
+
+        // cpu.cycle();
+        // cpu.cycle();
+        // cpu.cycle();
+        // cpu.cycle();
+        // cpu.cycle();
+
+        // assert_eq!(cpu.pc, 0x0602);
     }
 }
