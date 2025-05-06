@@ -77,6 +77,10 @@ enum State {
     FetchAbsHi,
     ExecAbs,
 
+    // Zero page states
+    FetchZP,
+    ExecZP,
+
     // Read-Modify-Write states
     RmwRead,       // Read opcode from effective address
     RmwDummyWrite, // Dummy write the value read to the effective address
@@ -155,6 +159,8 @@ impl<'a> Cpu<'a> {
             State::FetchAbsLo => self.fetch_abs_lo(),
             State::FetchAbsHi => self.fetch_abs_hi(),
             State::ExecAbs => self.exec_abs(),
+            State::FetchZP => self.fetch_zp(),
+            State::ExecZP => self.exec_zp(),
             State::RmwRead => self.rmw_read(),
             State::RmwDummyWrite => self.rmw_dummy_write(),
             State::RmwExec => self.rmw_exec(),
@@ -303,6 +309,7 @@ impl<'a> Cpu<'a> {
             AddressingMode::Accumulator => self.state = State::ExecAcc,
             AddressingMode::Immediate => self.state = State::ExecImm,
             AddressingMode::Absolute => self.state = State::FetchAbsLo,
+            AddressingMode::ZeroPage => self.state = State::FetchZP,
             _ => todo!("Implement remaining states"),
         }
     }
@@ -538,6 +545,39 @@ impl<'a> Cpu<'a> {
             _ => panic!("Unimplemented nmeonic for absolute addressing mode!"),
         }
         self.state = State::FetchOpcode;
+    }
+
+    fn fetch_zp(&mut self) {
+        self.addr = self.pc;
+        self.read = true;
+        self.access_bus();
+        self.latch_u8 = self.data;
+
+        self.pc = self.pc.wrapping_add(1);
+        self.state = State::ExecZP;
+    }
+
+    fn exec_zp(&mut self) {
+        // Operand read from page zero
+        self.addr = self.latch_u8 as u16;
+        self.read = true;
+        self.access_bus();
+
+        match self.cur_nmeonic {
+            Nmeonic::ADC => self.adc(),
+            Nmeonic::AND => self.and(),
+            Nmeonic::BIT => self.bit(),
+            Nmeonic::CMP => self.cmp(),
+            Nmeonic::CPX => self.cpx(),
+            Nmeonic::CPY => self.cpy(),
+            Nmeonic::EOR => self.eor(),
+            Nmeonic::LDA => self.lda(),
+            Nmeonic::LDX => self.ldx(),
+            Nmeonic::LDY => self.ldy(),
+            Nmeonic::ORA => self.ora(),
+            Nmeonic::SBC => self.sbc(),
+            _ => todo!("Remaining zero page mode instructions"),
+        }
     }
 
     fn rmw_read(&mut self) {
