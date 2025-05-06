@@ -782,4 +782,39 @@ mod tests {
 
         assert_eq!(cpu.a, 0x50);
     }
+
+    #[test]
+    fn zp_ops() {
+        let mut bus: Bus<1> = Bus::new();
+        let mut ram = Memory::new();
+        let mut program = [0xEA_u8; 65536]; // nop padding
+
+        // lda $FF
+        program[0] = 0xA5;
+        program[1] = 0xFF;
+
+        program[0x00FF] = 0x42;
+
+        ram.load_program(&program);
+        bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
+
+        let mut cpu = Cpu::new(&mut bus);
+        cpu.start_sequence();
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0);
+        assert_eq!(cpu.data, 0xA5);
+        assert!(cpu.read);
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 1);
+        assert_eq!(cpu.data, 0xFF);
+        assert!(cpu.read);
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x00FF);
+        assert_eq!(cpu.data, 0x42);
+        assert!(cpu.read);
+        assert_eq!(cpu.a, 0x42);
+    }
 }
