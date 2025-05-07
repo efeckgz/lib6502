@@ -271,7 +271,6 @@ impl<'a> Cpu<'a> {
         self.addr = self.pc;
         self.read = true;
         self.access_bus();
-        self.pc = self.pc.wrapping_add(1);
 
         // Branch is taken if the flags are set accordingly and we are decoding a branch
         let branch_taken = match self.cur_nmeonic {
@@ -287,8 +286,8 @@ impl<'a> Cpu<'a> {
         };
 
         if branch_taken {
-            // If we are here, it means the from_branch flag is set therefore self.data contains the branch offset.
-            let offset = self.data as i8;
+            // If we are here, it means the from_branch flag is set therefore self.latch_u8 contains the branch offset.
+            let offset = self.latch_u8 as i8;
             let pch = (self.pc & 0xFF00) >> 8;
             let old_pcl = (self.pc & 0x00FF) as u8;
             let (new_pcl, boundry_crossed) = old_pcl.overflowing_add_signed(offset);
@@ -302,6 +301,7 @@ impl<'a> Cpu<'a> {
             }
         }
 
+        self.pc = self.pc.wrapping_add(1);
         if let Some(instruction) = LOOKUP[self.data as usize] {
             let (mode, nm) = instruction;
             self.cur_mode = mode;
@@ -812,6 +812,7 @@ impl<'a> Cpu<'a> {
         self.read = true;
         self.access_bus();
         self.pc = self.pc.wrapping_add(1);
+        self.latch_u8 = self.data;
         self.state = State::FetchOpcode(FROM_BRANCH);
     }
 

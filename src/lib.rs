@@ -890,4 +890,78 @@ mod tests {
 
         assert_eq!(cpu.a, 0x84);
     }
+
+    #[test]
+    fn test_branch() {
+        let mut bus: Bus<1> = Bus::new();
+        let mut ram = Memory::new();
+        let mut program = [0_u8; 65536];
+
+        // lda #00
+        program[0x0000] = 0xA9;
+        program[0x0001] = 0x00;
+
+        // bne $10 - should not take the branch
+        program[0x0002] = 0xD0;
+        program[0x0003] = 0x10;
+
+        // lda #$80 - set the negative flag
+        program[0x0004] = 0xA9;
+        program[0x0005] = 0x80;
+
+        // bmi $10
+        program[0x0006] = 0x30;
+        program[0x0007] = 0x10;
+
+        // lda #10 - should not run
+        program[0x0008] = 0xA9;
+        program[0x0009] = 0xA0;
+
+        // lda #$42 - should run
+        program[0x0018] = 0xA9;
+        program[0x0019] = 0x42;
+
+        ram.load_program(&program);
+        bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
+
+        let mut cpu = Cpu::new(&mut bus);
+        cpu.start_sequence();
+        assert_eq!(cpu.pc, 0);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0);
+        assert!(cpu.flag_set(Flags::Zero));
+
+        // Branch not taken
+        cpu.cycle();
+        cpu.cycle();
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x80);
+        assert!(cpu.flag_set(Flags::Negative));
+
+        // Branch taken without page cross - 3 cycles
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x0006);
+        assert_eq!(cpu.data, 0x30);
+        assert_eq!(cpu.pc, 0x0007);
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x0007);
+        assert_eq!(cpu.data, 0x10);
+        assert_eq!(cpu.pc, 0x0008);
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x0008);
+
+        // lda #$42
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x42);
+    }
 }
