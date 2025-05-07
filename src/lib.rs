@@ -909,7 +909,7 @@ mod tests {
         program[0x0004] = 0xA9;
         program[0x0005] = 0x80;
 
-        // bmi $10
+        // bmi $10 - sould run for 3 cycles to take the branch
         program[0x0006] = 0x30;
         program[0x0007] = 0x10;
 
@@ -920,6 +920,18 @@ mod tests {
         // lda #$42 - should run
         program[0x0018] = 0xA9;
         program[0x0019] = 0x42;
+
+        // lda #0 - set the zero flag
+        program[0x001A] = 0xA9;
+        program[0x001B] = 0x00;
+
+        // beq $FF - take the branch in 4 cycles for boundry cross
+        program[0x001C] = 0xF0;
+        program[0x001D] = 0xFF;
+
+        // lda #$17 - should run
+        program[0x0123] = 0xA9;
+        program[0x0124] = 0x17;
 
         ram.load_program(&program);
         bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
@@ -960,8 +972,26 @@ mod tests {
 
         // lda #$42
         cpu.cycle();
-        cpu.cycle();
+        assert_eq!(cpu.addr, 0x0018);
+        assert_eq!(cpu.data, 0xA9);
+        assert_eq!(cpu.pc, 0x0019);
 
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x0019);
+        assert_eq!(cpu.data, 0x42);
+        assert_eq!(cpu.pc, 0x001A);
         assert_eq!(cpu.a, 0x42);
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x001A);
+        assert_eq!(cpu.data, 0xA9);
+        assert_eq!(cpu.pc, 0x001B);
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x001B);
+        assert_eq!(cpu.data, 0x00);
+        assert_eq!(cpu.pc, 0x001C);
+        assert_eq!(cpu.a, 0x00);
+        assert!(cpu.flag_set(Flags::Zero));
     }
 }
