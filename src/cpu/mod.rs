@@ -909,15 +909,15 @@ impl<'a> Cpu<'a> {
     }
 
     fn bcc(&mut self) -> bool {
-        unimplemented!();
+        !self.flag_set(Flags::Carry)
     }
 
     fn bcs(&mut self) -> bool {
-        unimplemented!();
+        self.flag_set(Flags::Carry)
     }
 
     fn beq(&mut self) -> bool {
-        unimplemented!();
+        self.flag_set(Flags::Zero)
     }
 
     fn bit(&mut self) {
@@ -929,15 +929,15 @@ impl<'a> Cpu<'a> {
     }
 
     fn bmi(&mut self) -> bool {
-        unimplemented!();
+        self.flag_set(Flags::Negative)
     }
 
     fn bne(&mut self) -> bool {
-        unimplemented!();
+        !self.flag_set(Flags::Zero)
     }
 
     fn bpl(&mut self) -> bool {
-        unimplemented!();
+        !self.flag_set(Flags::Negative)
     }
 
     fn brk(&mut self) {
@@ -946,11 +946,11 @@ impl<'a> Cpu<'a> {
     }
 
     fn bvc(&mut self) -> bool {
-        unimplemented!();
+        !self.flag_set(Flags::Overflow)
     }
 
     fn bvs(&mut self) -> bool {
-        unimplemented!();
+        self.flag_set(Flags::Overflow)
     }
 
     fn clc(&mut self) {
