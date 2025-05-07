@@ -930,8 +930,8 @@ mod tests {
         program[0x001D] = 0xFF;
 
         // lda #$17 - should run
-        program[0x0123] = 0xA9;
-        program[0x0124] = 0x17;
+        program[0x011D] = 0xA9;
+        program[0x011E] = 0x17;
 
         ram.load_program(&program);
         bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
@@ -993,5 +993,18 @@ mod tests {
         assert_eq!(cpu.pc, 0x001C);
         assert_eq!(cpu.a, 0x00);
         assert!(cpu.flag_set(Flags::Zero));
+
+        // beq $FF
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x001C);
+        assert_eq!(cpu.data, 0xF0);
+        assert_eq!(cpu.pc, 0x001D);
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x001D);
+        assert_eq!(cpu.data, 0xFF);
+        assert_eq!(cpu.pc, 0x001E);
+
+        cpu.cycle();
     }
 }
