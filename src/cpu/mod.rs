@@ -5,6 +5,9 @@ use lookup::{LOOKUP, Nmeonic};
 
 const STACK_BASE: u16 = 0x0100;
 
+const FROM_BRANCH: bool = true;
+const NOT_FROM_BRANCH: bool = false;
+
 pub struct Cpu<'a> {
     // Internal state
     pub a: u8,   // Accumulator
@@ -61,7 +64,7 @@ enum State {
 
     DummyReadPc, // Read on current pc val, dont increment pc and discard result
 
-    FetchOpcode, // Fetch opcode state. Every instruction starts here.
+    FetchOpcode(bool), // Fetch opcode state. Every instruction starts here.
 
     // 2 cycle of 2 cycle ops
     ExecImpl, // Execute implied mode (2 cycle)
@@ -95,6 +98,8 @@ enum State {
     PullPcL,
 
     PushP, // Push processor status register to the stack
+
+    FetchOffset, // Fetch relative branch offset
 }
 
 // Status flags. Used in the processor status register p.
@@ -149,7 +154,7 @@ impl<'a> Cpu<'a> {
             State::FourthStart => self.fourth_start(),
             State::FetchFirstVec(vector) => self.fetch_first_vec(vector),
             State::FetchSecondVec(vector) => self.fetch_second_vec(vector),
-            State::FetchOpcode => self.fetch_opcode(),
+            State::FetchOpcode(from_branch) => self.fetch_opcode(from_branch),
             State::DummyReadPc => self.dummy_read_pc(),
             State::ExecImpl => self.exec_impl(),
             State::ExecImm => self.exec_imm(),
@@ -171,6 +176,7 @@ impl<'a> Cpu<'a> {
             State::PullPcH => self.pull_pch(),
             State::PullPcL => self.pull_pcl(),
             State::PushP => self.push_p(),
+            State::FetchOffset => self.fetch_offset(),
             _ => todo!("Implement remaining states!"),
         }
     }
@@ -242,7 +248,7 @@ impl<'a> Cpu<'a> {
         self.read = true;
         self.access_bus();
         self.pc = ((self.data as u16) << 8) | self.latch_u8 as u16;
-        self.state = State::FetchOpcode;
+        self.state = State::FetchOpcode(NOT_FROM_BRANCH);
     }
 
     fn dummy_read_pc(&mut self) {
@@ -259,12 +265,43 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn fetch_opcode(&mut self) {
+    // Boolean parameter from_branch indicates the microprocessor should check status flags to see if there is a branch to be taken.
+    // It is set to true if the state machine transitions from FetchOffset to FetchOpcode.
+    fn fetch_opcode(&mut self, from_branch: bool) {
         self.addr = self.pc;
         self.read = true;
         self.access_bus();
-
         self.pc = self.pc.wrapping_add(1);
+
+        // Branch is taken if the flags are set accordingly and we are decoding a branch
+        let branch_taken = match self.cur_nmeonic {
+            Nmeonic::BCC => self.bcc() && from_branch,
+            Nmeonic::BCS => self.bcs() && from_branch,
+            Nmeonic::BEQ => self.beq() && from_branch,
+            Nmeonic::BMI => self.bmi() && from_branch,
+            Nmeonic::BNE => self.bne() && from_branch,
+            Nmeonic::BPL => self.bpl() && from_branch,
+            Nmeonic::BVC => self.bvc() && from_branch,
+            Nmeonic::BVS => self.bvs() && from_branch,
+            _ => false,
+        };
+
+        if branch_taken {
+            // If we are here, it means the from_branch flag is set therefore self.data contains the branch offset.
+            let offset = self.data as i8;
+            let pch = (self.pc & 0xFF00) >> 8;
+            let old_pcl = (self.pc & 0x00FF) as u8;
+            let (new_pcl, boundry_crossed) = old_pcl.overflowing_add_signed(offset);
+
+            if boundry_crossed {
+                todo!("Take another cycle if branch results in page boundry cross");
+            } else {
+                self.pc = pch + new_pcl as u16;
+                self.state = State::FetchOpcode(NOT_FROM_BRANCH);
+                return;
+            }
+        }
+
         if let Some(instruction) = LOOKUP[self.data as usize] {
             let (mode, nm) = instruction;
             self.cur_mode = mode;
@@ -311,6 +348,7 @@ impl<'a> Cpu<'a> {
             AddressingMode::Immediate => self.state = State::ExecImm,
             AddressingMode::Absolute => self.state = State::FetchAbsLo,
             AddressingMode::ZeroPage => self.state = State::FetchZP,
+            AddressingMode::Relative => self.state = State::FetchOffset,
             _ => todo!("Implement remaining states"),
         }
     }
@@ -343,7 +381,7 @@ impl<'a> Cpu<'a> {
             _ => panic!("Unrecognized nmeonic for 2 cycle implied mode!"),
         }
 
-        self.state = State::FetchOpcode;
+        self.state = State::FetchOpcode(NOT_FROM_BRANCH);
     }
 
     fn exec_imm(&mut self) {
@@ -367,7 +405,7 @@ impl<'a> Cpu<'a> {
             _ => panic!("Unrecognized opcode-addressing mode-nmeonic combination!"),
         }
 
-        self.state = State::FetchOpcode;
+        self.state = State::FetchOpcode(NOT_FROM_BRANCH);
     }
 
     fn exec_acc(&mut self) {
@@ -382,7 +420,7 @@ impl<'a> Cpu<'a> {
             Nmeonic::ROR => self.ror(),
             _ => panic!("Unrecognized opcode-addressing mode-nmeonic combination!"),
         }
-        self.state = State::FetchOpcode;
+        self.state = State::FetchOpcode(NOT_FROM_BRANCH);
     }
 
     fn impl_push(&mut self) {
@@ -391,7 +429,7 @@ impl<'a> Cpu<'a> {
             Nmeonic::PHP => self.php(),
             _ => panic!("Unrecognized push operation!"),
         }
-        self.state = State::FetchOpcode;
+        self.state = State::FetchOpcode(NOT_FROM_BRANCH);
     }
 
     fn read_inc_s(&mut self) {
@@ -413,7 +451,7 @@ impl<'a> Cpu<'a> {
         if let Nmeonic::RTI = self.cur_nmeonic {
             self.state = State::PullPcL;
         } else {
-            self.state = State::FetchOpcode;
+            self.state = State::FetchOpcode(NOT_FROM_BRANCH);
         }
     }
 
@@ -446,11 +484,11 @@ impl<'a> Cpu<'a> {
                 // Absolute JMP is only 3 cycles, there is no foruth cycle to fetch memroy from the effective address.
                 // pc is set to the effective address and state is back to fetch opcode.
                 self.jmp();
-                self.state = State::FetchOpcode;
+                self.state = State::FetchOpcode(NOT_FROM_BRANCH);
             }
             Nmeonic::JSR => {
                 self.pc = self.latch_u16;
-                self.state = State::FetchOpcode;
+                self.state = State::FetchOpcode(NOT_FROM_BRANCH);
             }
             // Read-Modify-Write instructions.
             // These instructions take 6 cycles.
@@ -545,7 +583,7 @@ impl<'a> Cpu<'a> {
             Nmeonic::STY => self.sty(),
             _ => panic!("Unimplemented nmeonic for absolute addressing mode!"),
         }
-        self.state = State::FetchOpcode;
+        self.state = State::FetchOpcode(NOT_FROM_BRANCH);
     }
 
     fn fetch_zp(&mut self) {
@@ -659,7 +697,7 @@ impl<'a> Cpu<'a> {
             _ => todo!("Remaining zero page mode instructions"),
         }
 
-        self.state = State::FetchOpcode;
+        self.state = State::FetchOpcode(NOT_FROM_BRANCH);
     }
 
     fn rmw_read(&mut self) {
@@ -695,7 +733,7 @@ impl<'a> Cpu<'a> {
         self.addr = self.latch_u16;
         self.read = false;
         self.access_bus();
-        self.state = State::FetchOpcode;
+        self.state = State::FetchOpcode(NOT_FROM_BRANCH);
     }
 
     fn jsr_dummy_stack(&mut self) {
@@ -735,7 +773,7 @@ impl<'a> Cpu<'a> {
         self.addr = self.pc;
         self.read = true;
         self.access_bus();
-        self.state = State::FetchOpcode;
+        self.state = State::FetchOpcode(NOT_FROM_BRANCH);
     }
 
     fn pull_pch(&mut self) {
@@ -748,7 +786,7 @@ impl<'a> Cpu<'a> {
 
         self.pc = (hi << 8) | lo;
 
-        self.state = State::FetchOpcode;
+        self.state = State::FetchOpcode(NOT_FROM_BRANCH);
     }
 
     fn pull_pcl(&mut self) {
@@ -767,6 +805,14 @@ impl<'a> Cpu<'a> {
         self.access_bus();
         self.s = self.s.wrapping_sub(1);
         self.state = State::FetchFirstVec(Vectors::BrkLo);
+    }
+
+    fn fetch_offset(&mut self) {
+        self.addr = self.pc;
+        self.read = true;
+        self.access_bus();
+        self.pc = self.pc.wrapping_add(1);
+        self.state = State::FetchOpcode(FROM_BRANCH);
     }
 
     fn access_bus(&mut self) {
@@ -862,15 +908,15 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn bcc(&mut self) {
+    fn bcc(&mut self) -> bool {
         unimplemented!();
     }
 
-    fn bcs(&mut self) {
+    fn bcs(&mut self) -> bool {
         unimplemented!();
     }
 
-    fn beq(&mut self) {
+    fn beq(&mut self) -> bool {
         unimplemented!();
     }
 
@@ -882,15 +928,15 @@ impl<'a> Cpu<'a> {
         self.set_flag(Flags::Negative, (self.data & (1 << 7)) != 0);
     }
 
-    fn bmi(&mut self) {
+    fn bmi(&mut self) -> bool {
         unimplemented!();
     }
 
-    fn bne(&mut self) {
+    fn bne(&mut self) -> bool {
         unimplemented!();
     }
 
-    fn bpl(&mut self) {
+    fn bpl(&mut self) -> bool {
         unimplemented!();
     }
 
@@ -899,11 +945,11 @@ impl<'a> Cpu<'a> {
         self.set_flag(Flags::Break, true);
     }
 
-    fn bvc(&mut self) {
+    fn bvc(&mut self) -> bool {
         unimplemented!();
     }
 
-    fn bvs(&mut self) {
+    fn bvs(&mut self) -> bool {
         unimplemented!();
     }
 
