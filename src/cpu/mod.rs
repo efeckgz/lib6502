@@ -32,6 +32,7 @@ pub struct Cpu<'a> {
 
 #[derive(Copy, Clone)]
 pub enum AddressingMode {
+    None,
     Accumulator,
     Relative,
     Implied,
@@ -127,8 +128,8 @@ impl<'a> Cpu<'a> {
             p: 0,
             s: 0xFF,                 // Start at stack top - not the specified behavior
             state: State::ResetHold, // Start the cpu at the reset state.
-            cur_mode: AddressingMode::Implied,
-            cur_nmeonic: Nmeonic::BRK,
+            cur_mode: AddressingMode::None,
+            cur_nmeonic: Nmeonic::None,
             bus,
             addr: 0,
             data: 0,

@@ -4,6 +4,7 @@ pub type Instruction = Option<(AddressingMode, Nmeonic)>;
 
 #[derive(Clone, Copy)]
 pub enum Nmeonic {
+    None,
     ADC,
     AND,
     ASL,
