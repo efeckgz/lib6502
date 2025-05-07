@@ -787,11 +787,38 @@ mod tests {
     fn zp_ops() {
         let mut bus: Bus<1> = Bus::new();
         let mut ram = Memory::new();
-        let mut program = [0xEA_u8; 65536]; // nop padding
+        let mut program = [0x00_u8; 65536]; // nop padding
 
         // lda $FF
         program[0] = 0xA5;
         program[1] = 0xFF;
+
+        // ldx $FF
+        program[2] = 0xA6;
+        program[3] = 0xFF;
+
+        // ldy $FF
+        program[4] = 0xA4;
+        program[5] = 0xFF;
+
+        // inx
+        program[6] = 0xE8;
+
+        // stx $AA
+        program[7] = 0x86;
+        program[8] = 0xAA;
+
+        // lda $AA
+        program[9] = 0xA5;
+        program[10] = 0xAA;
+
+        // asl $FF
+        program[11] = 0x06;
+        program[12] = 0xFF;
+
+        // lda $FF
+        program[13] = 0xA5;
+        program[14] = 0xFF;
 
         program[0x00FF] = 0x42;
 
@@ -801,6 +828,9 @@ mod tests {
         let mut cpu = Cpu::new(&mut bus);
         cpu.start_sequence();
 
+        assert_eq!(cpu.pc, 0x00);
+
+        // lda $FF
         cpu.cycle();
         assert_eq!(cpu.addr, 0);
         assert_eq!(cpu.data, 0xA5);
@@ -816,5 +846,48 @@ mod tests {
         assert_eq!(cpu.data, 0x42);
         assert!(cpu.read);
         assert_eq!(cpu.a, 0x42);
+
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.x, 0x42);
+
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.y, 0x42);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.x, 0x43);
+
+        // stx $AA
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+
+        // lda $AA
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x43);
+
+        // asl $FF
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+
+        // lda $FF
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x84);
     }
 }

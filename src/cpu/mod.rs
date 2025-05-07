@@ -554,30 +554,111 @@ impl<'a> Cpu<'a> {
         self.latch_u8 = self.data;
 
         self.pc = self.pc.wrapping_add(1);
-        self.state = State::ExecZP;
+        // self.state = State::ExecZP;
+        match self.cur_nmeonic {
+            Nmeonic::ASL
+            | Nmeonic::DEC
+            | Nmeonic::INC
+            | Nmeonic::LSR
+            | Nmeonic::ROL
+            | Nmeonic::ROR => {
+                self.latch_u16 = self.latch_u8 as u16;
+                self.state = State::RmwRead;
+            }
+            _ => self.state = State::ExecZP,
+        }
     }
 
     fn exec_zp(&mut self) {
-        // Operand read from page zero
-        self.addr = self.latch_u8 as u16;
-        self.read = true;
-        self.access_bus();
-
         match self.cur_nmeonic {
-            Nmeonic::ADC => self.adc(),
-            Nmeonic::AND => self.and(),
-            Nmeonic::BIT => self.bit(),
-            Nmeonic::CMP => self.cmp(),
-            Nmeonic::CPX => self.cpx(),
-            Nmeonic::CPY => self.cpy(),
-            Nmeonic::EOR => self.eor(),
-            Nmeonic::LDA => self.lda(),
-            Nmeonic::LDX => self.ldx(),
-            Nmeonic::LDY => self.ldy(),
-            Nmeonic::ORA => self.ora(),
-            Nmeonic::SBC => self.sbc(),
+            Nmeonic::STA => {
+                self.latch_u16 = self.latch_u8 as u16;
+                self.sta();
+            }
+            Nmeonic::STX => {
+                self.latch_u16 = self.latch_u8 as u16;
+                self.stx();
+            }
+            Nmeonic::STY => {
+                self.latch_u16 = self.latch_u8 as u16;
+                self.sty();
+            }
+            Nmeonic::ADC => {
+                self.addr = self.latch_u8 as u16;
+                self.read = true;
+                self.access_bus();
+                self.adc()
+            }
+            Nmeonic::AND => {
+                self.addr = self.latch_u8 as u16;
+                self.read = true;
+                self.access_bus();
+                self.and()
+            }
+            Nmeonic::BIT => {
+                self.addr = self.latch_u8 as u16;
+                self.read = true;
+                self.access_bus();
+                self.bit()
+            }
+            Nmeonic::CMP => {
+                self.addr = self.latch_u8 as u16;
+                self.read = true;
+                self.access_bus();
+                self.cmp()
+            }
+            Nmeonic::CPX => {
+                self.addr = self.latch_u8 as u16;
+                self.read = true;
+                self.access_bus();
+                self.cpx()
+            }
+            Nmeonic::CPY => {
+                self.addr = self.latch_u8 as u16;
+                self.read = true;
+                self.access_bus();
+                self.cpy()
+            }
+            Nmeonic::EOR => {
+                self.addr = self.latch_u8 as u16;
+                self.read = true;
+                self.access_bus();
+                self.eor()
+            }
+            Nmeonic::LDA => {
+                self.addr = self.latch_u8 as u16;
+                self.read = true;
+                self.access_bus();
+                self.lda()
+            }
+            Nmeonic::LDX => {
+                self.addr = self.latch_u8 as u16;
+                self.read = true;
+                self.access_bus();
+                self.ldx()
+            }
+            Nmeonic::LDY => {
+                self.addr = self.latch_u8 as u16;
+                self.read = true;
+                self.access_bus();
+                self.ldy()
+            }
+            Nmeonic::ORA => {
+                self.addr = self.latch_u8 as u16;
+                self.read = true;
+                self.access_bus();
+                self.ora()
+            }
+            Nmeonic::SBC => {
+                self.addr = self.latch_u8 as u16;
+                self.read = true;
+                self.access_bus();
+                self.sbc()
+            }
             _ => todo!("Remaining zero page mode instructions"),
         }
+
+        self.state = State::FetchOpcode;
     }
 
     fn rmw_read(&mut self) {
