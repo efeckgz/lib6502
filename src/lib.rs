@@ -1,4 +1,4 @@
-#![no_std]
+// #![no_std]
 
 pub mod bus;
 pub mod cpu;
@@ -925,13 +925,34 @@ mod tests {
         program[0x001A] = 0xA9;
         program[0x001B] = 0x00;
 
-        // beq $FF - take the branch in 4 cycles for boundry cross
+        // beq $7F - take the branch in 3 cycles
         program[0x001C] = 0xF0;
-        program[0x001D] = 0xFF;
+        program[0x001D] = 0x7F;
+
+        // lda #$15 - should not run
+        program[0x001E] = 0xA9;
+        program[0x001F] = 0x15;
 
         // lda #$17 - should run
-        program[0x011D] = 0xA9;
-        program[0x011E] = 0x17;
+        program[0x009D] = 0xA9;
+        program[0x009E] = 0x17;
+
+        // bne #7F - take the branch in 4 cycles
+        program[0x009F] = 0xD0;
+        program[0x00A0] = 0x7F;
+
+        // lda #$99
+        program[0x0112] = 0xA9;
+        program[0x0113] = 0x99;
+
+        // lda #$11
+        program[0x0120] = 0xA9;
+        program[0x0121] = 0x11;
+
+        // bne $F4 - take the branch in 3 cycles
+        // Should branch back to 0x0112
+        program[0x0122] = 0xD0;
+        program[0x0123] = 0xF4;
 
         ram.load_program(&program);
         bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
@@ -1002,9 +1023,58 @@ mod tests {
 
         cpu.cycle();
         assert_eq!(cpu.addr, 0x001D);
-        assert_eq!(cpu.data, 0xFF);
+        assert_eq!(cpu.data, 0x7F);
         assert_eq!(cpu.pc, 0x001E);
 
         cpu.cycle();
+        assert_eq!(cpu.addr, 0x001E);
+        assert_eq!(cpu.data, 0xA9);
+        assert_eq!(cpu.pc, 0x009D);
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x17);
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x9F);
+        assert_eq!(cpu.data, 0xD0);
+        assert_eq!(cpu.pc, 0xA0);
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0xA0);
+        assert_eq!(cpu.data, 0x7F);
+        assert_eq!(cpu.pc, 0xA1);
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0xA1);
+        assert_eq!(cpu.data, 0x00);
+        assert_eq!(cpu.pc, 0xA1);
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x20);
+        assert_eq!(cpu.data, 0x00);
+        assert_eq!(cpu.pc, 0x0120);
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x0120);
+        assert_eq!(cpu.data, 0xA9);
+        assert_eq!(cpu.pc, 0x0121);
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, 0x0121);
+        assert_eq!(cpu.data, 0x11);
+        assert_eq!(cpu.pc, 0x0122);
+
+        assert_eq!(cpu.a, 0x11);
+
+        cpu.cycle();
+        cpu.cycle();
+        cpu.cycle();
+
+        cpu.cycle();
+        cpu.cycle();
+
+        assert_eq!(cpu.a, 0x99);
     }
 }

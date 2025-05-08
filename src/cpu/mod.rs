@@ -100,6 +100,10 @@ enum State {
     PushP, // Push processor status register to the stack
 
     FetchOffset, // Fetch relative branch offset
+
+    // Boolean flag indicates page crossed up.
+    // Extra cycle due to page boundry cross.
+    PageCrossed(bool),
 }
 
 // Status flags. Used in the processor status register p.
@@ -177,7 +181,7 @@ impl<'a> Cpu<'a> {
             State::PullPcL => self.pull_pcl(),
             State::PushP => self.push_p(),
             State::FetchOffset => self.fetch_offset(),
-            _ => todo!("Implement remaining states!"),
+            State::PageCrossed(page_up) => self.page_crossed(page_up),
         }
     }
 
@@ -292,13 +296,22 @@ impl<'a> Cpu<'a> {
             let old_pcl = (self.pc & 0x00FF) as u8;
             let (new_pcl, boundry_crossed) = old_pcl.overflowing_add_signed(offset);
 
+            println!(
+                "old: {:#04X} new: {:#04X}, offset {}, offset_hex: {:#04X} latch_u8: {:#04X}",
+                old_pcl, new_pcl, offset, offset, self.latch_u8
+            );
+
             if boundry_crossed {
-                todo!("Take another cycle if branch results in page boundry cross");
+                // todo!("Take another cycle if branch results in page boundry cross");
+                self.latch_u16 = pch + new_pcl as u16;
+                self.state = State::PageCrossed(offset > 0);
             } else {
                 self.pc = pch + new_pcl as u16;
+                println!("New program counter no cross: {:#04X}.", self.pc);
                 self.state = State::FetchOpcode(NOT_FROM_BRANCH);
-                return;
             }
+
+            return;
         }
 
         self.pc = self.pc.wrapping_add(1);
@@ -769,13 +782,6 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn jsr_read(&mut self) {
-        self.addr = self.pc;
-        self.read = true;
-        self.access_bus();
-        self.state = State::FetchOpcode(NOT_FROM_BRANCH);
-    }
-
     fn pull_pch(&mut self) {
         let lo = self.latch_u8 as u16;
         self.addr = STACK_BASE + self.s as u16;
@@ -816,27 +822,25 @@ impl<'a> Cpu<'a> {
         self.state = State::FetchOpcode(FROM_BRANCH);
     }
 
+    fn page_crossed(&mut self, page_up: bool) {
+        self.addr = self.latch_u16;
+        self.read = true;
+        self.access_bus();
+        self.pc = if page_up {
+            self.latch_u16 + 0x0100
+        } else {
+            self.latch_u16 - 0x0100
+        };
+        println!("New program counter page cross: {:#04X}.", self.pc);
+        self.state = State::FetchOpcode(NOT_FROM_BRANCH);
+    }
+
     fn access_bus(&mut self) {
         if self.read {
             self.data = self.bus.read(self.addr);
         } else {
             self.bus.write(self.addr, self.data);
         }
-    }
-
-    fn push_stack(&mut self, val: u8) {
-        self.addr = STACK_BASE + self.s as u16;
-        self.data = val;
-        self.read = false;
-        self.access_bus();
-        self.s = self.s.wrapping_sub(1);
-    }
-
-    fn pop_stack(&mut self) {
-        self.addr = STACK_BASE + self.s as u16;
-        self.read = true;
-        self.access_bus(); // Stack top is at self.data now
-        self.s = self.s.wrapping_add(1);
     }
 
     // Returns the set status of a flag in p register.
@@ -1056,10 +1060,6 @@ impl<'a> Cpu<'a> {
 
     fn jmp(&mut self) {
         self.pc = self.latch_u16;
-    }
-
-    fn jsr(&mut self) {
-        unimplemented!();
     }
 
     fn lda(&mut self) {
