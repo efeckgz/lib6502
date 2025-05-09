@@ -3,4 +3,5 @@ name = "lib6502"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
+[dev-dependencies]
+serde = { version = "*", features = ["derive"] }

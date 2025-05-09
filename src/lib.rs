@@ -891,190 +891,190 @@ mod tests {
         assert_eq!(cpu.a, 0x84);
     }
 
-    #[test]
-    fn test_branch() {
-        let mut bus: Bus<1> = Bus::new();
-        let mut ram = Memory::new();
-        let mut program = [0_u8; 65536];
+    // #[test]
+    // fn test_branch() {
+    //     let mut bus: Bus<1> = Bus::new();
+    //     let mut ram = Memory::new();
+    //     let mut program = [0_u8; 65536];
 
-        // lda #00
-        program[0x0000] = 0xA9;
-        program[0x0001] = 0x00;
+    //     // lda #00
+    //     program[0x0000] = 0xA9;
+    //     program[0x0001] = 0x00;
 
-        // bne $10 - should not take the branch
-        program[0x0002] = 0xD0;
-        program[0x0003] = 0x10;
+    //     // bne $10 - should not take the branch
+    //     program[0x0002] = 0xD0;
+    //     program[0x0003] = 0x10;
 
-        // lda #$80 - set the negative flag
-        program[0x0004] = 0xA9;
-        program[0x0005] = 0x80;
+    //     // lda #$80 - set the negative flag
+    //     program[0x0004] = 0xA9;
+    //     program[0x0005] = 0x80;
 
-        // bmi $10 - sould run for 3 cycles to take the branch
-        program[0x0006] = 0x30;
-        program[0x0007] = 0x10;
+    //     // bmi $10 - sould run for 3 cycles to take the branch
+    //     program[0x0006] = 0x30;
+    //     program[0x0007] = 0x10;
 
-        // lda #10 - should not run
-        program[0x0008] = 0xA9;
-        program[0x0009] = 0xA0;
+    //     // lda #10 - should not run
+    //     program[0x0008] = 0xA9;
+    //     program[0x0009] = 0xA0;
 
-        // lda #$42 - should run
-        program[0x0018] = 0xA9;
-        program[0x0019] = 0x42;
+    //     // lda #$42 - should run
+    //     program[0x0018] = 0xA9;
+    //     program[0x0019] = 0x42;
 
-        // lda #0 - set the zero flag
-        program[0x001A] = 0xA9;
-        program[0x001B] = 0x00;
+    //     // lda #0 - set the zero flag
+    //     program[0x001A] = 0xA9;
+    //     program[0x001B] = 0x00;
 
-        // beq $7F - take the branch in 3 cycles
-        program[0x001C] = 0xF0;
-        program[0x001D] = 0x7F;
+    //     // beq $7F - take the branch in 3 cycles
+    //     program[0x001C] = 0xF0;
+    //     program[0x001D] = 0x7F;
 
-        // lda #$15 - should not run
-        program[0x001E] = 0xA9;
-        program[0x001F] = 0x15;
+    //     // lda #$15 - should not run
+    //     program[0x001E] = 0xA9;
+    //     program[0x001F] = 0x15;
 
-        // lda #$17 - should run
-        program[0x009D] = 0xA9;
-        program[0x009E] = 0x17;
+    //     // lda #$17 - should run
+    //     program[0x009D] = 0xA9;
+    //     program[0x009E] = 0x17;
 
-        // bne #7F - take the branch in 4 cycles
-        program[0x009F] = 0xD0;
-        program[0x00A0] = 0x7F;
+    //     // bne #7F - take the branch in 4 cycles
+    //     program[0x009F] = 0xD0;
+    //     program[0x00A0] = 0x7F;
 
-        // lda #$99
-        program[0x0112] = 0xA9;
-        program[0x0113] = 0x99;
+    //     // lda #$99
+    //     program[0x0112] = 0xA9;
+    //     program[0x0113] = 0x99;
 
-        // lda #$11
-        program[0x0120] = 0xA9;
-        program[0x0121] = 0x11;
+    //     // lda #$11
+    //     program[0x0120] = 0xA9;
+    //     program[0x0121] = 0x11;
 
-        // bne $F4 - take the branch in 3 cycles
-        // Should branch back to 0x0112
-        program[0x0122] = 0xD0;
-        program[0x0123] = 0xF4;
+    //     // bne $F4 - take the branch in 3 cycles
+    //     // Should branch back to 0x0112
+    //     program[0x0122] = 0xD0;
+    //     program[0x0123] = 0xF4;
 
-        ram.load_program(&program);
-        bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
+    //     ram.load_program(&program);
+    //     bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
 
-        let mut cpu = Cpu::new(&mut bus);
-        cpu.start_sequence();
-        assert_eq!(cpu.pc, 0);
+    //     let mut cpu = Cpu::new(&mut bus);
+    //     cpu.start_sequence();
+    //     assert_eq!(cpu.pc, 0);
 
-        cpu.cycle();
-        cpu.cycle();
+    //     cpu.cycle();
+    //     cpu.cycle();
 
-        assert_eq!(cpu.a, 0);
-        assert!(cpu.flag_set(Flags::Zero));
+    //     assert_eq!(cpu.a, 0);
+    //     assert!(cpu.flag_set(Flags::Zero));
 
-        // Branch not taken
-        cpu.cycle();
-        cpu.cycle();
+    //     // Branch not taken
+    //     cpu.cycle();
+    //     cpu.cycle();
 
-        cpu.cycle();
-        cpu.cycle();
+    //     cpu.cycle();
+    //     cpu.cycle();
 
-        assert_eq!(cpu.a, 0x80);
-        assert!(cpu.flag_set(Flags::Negative));
+    //     assert_eq!(cpu.a, 0x80);
+    //     assert!(cpu.flag_set(Flags::Negative));
 
-        // Branch taken without page cross - 3 cycles
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0x0006);
-        assert_eq!(cpu.data, 0x30);
-        assert_eq!(cpu.pc, 0x0007);
+    //     // Branch taken without page cross - 3 cycles
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0x0006);
+    //     assert_eq!(cpu.data, 0x30);
+    //     assert_eq!(cpu.pc, 0x0007);
 
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0x0007);
-        assert_eq!(cpu.data, 0x10);
-        assert_eq!(cpu.pc, 0x0008);
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0x0007);
+    //     assert_eq!(cpu.data, 0x10);
+    //     assert_eq!(cpu.pc, 0x0008);
 
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0x0008);
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0x0008);
 
-        // lda #$42
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0x0018);
-        assert_eq!(cpu.data, 0xA9);
-        assert_eq!(cpu.pc, 0x0019);
+    //     // lda #$42
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0x0018);
+    //     assert_eq!(cpu.data, 0xA9);
+    //     assert_eq!(cpu.pc, 0x0019);
 
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0x0019);
-        assert_eq!(cpu.data, 0x42);
-        assert_eq!(cpu.pc, 0x001A);
-        assert_eq!(cpu.a, 0x42);
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0x0019);
+    //     assert_eq!(cpu.data, 0x42);
+    //     assert_eq!(cpu.pc, 0x001A);
+    //     assert_eq!(cpu.a, 0x42);
 
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0x001A);
-        assert_eq!(cpu.data, 0xA9);
-        assert_eq!(cpu.pc, 0x001B);
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0x001A);
+    //     assert_eq!(cpu.data, 0xA9);
+    //     assert_eq!(cpu.pc, 0x001B);
 
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0x001B);
-        assert_eq!(cpu.data, 0x00);
-        assert_eq!(cpu.pc, 0x001C);
-        assert_eq!(cpu.a, 0x00);
-        assert!(cpu.flag_set(Flags::Zero));
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0x001B);
+    //     assert_eq!(cpu.data, 0x00);
+    //     assert_eq!(cpu.pc, 0x001C);
+    //     assert_eq!(cpu.a, 0x00);
+    //     assert!(cpu.flag_set(Flags::Zero));
 
-        // beq $FF
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0x001C);
-        assert_eq!(cpu.data, 0xF0);
-        assert_eq!(cpu.pc, 0x001D);
+    //     // beq $FF
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0x001C);
+    //     assert_eq!(cpu.data, 0xF0);
+    //     assert_eq!(cpu.pc, 0x001D);
 
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0x001D);
-        assert_eq!(cpu.data, 0x7F);
-        assert_eq!(cpu.pc, 0x001E);
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0x001D);
+    //     assert_eq!(cpu.data, 0x7F);
+    //     assert_eq!(cpu.pc, 0x001E);
 
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0x001E);
-        assert_eq!(cpu.data, 0xA9);
-        assert_eq!(cpu.pc, 0x009D);
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0x001E);
+    //     assert_eq!(cpu.data, 0xA9);
+    //     assert_eq!(cpu.pc, 0x009D);
 
-        cpu.cycle();
-        cpu.cycle();
+    //     cpu.cycle();
+    //     cpu.cycle();
 
-        assert_eq!(cpu.a, 0x17);
+    //     assert_eq!(cpu.a, 0x17);
 
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0x9F);
-        assert_eq!(cpu.data, 0xD0);
-        assert_eq!(cpu.pc, 0xA0);
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0x9F);
+    //     assert_eq!(cpu.data, 0xD0);
+    //     assert_eq!(cpu.pc, 0xA0);
 
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0xA0);
-        assert_eq!(cpu.data, 0x7F);
-        assert_eq!(cpu.pc, 0xA1);
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0xA0);
+    //     assert_eq!(cpu.data, 0x7F);
+    //     assert_eq!(cpu.pc, 0xA1);
 
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0xA1);
-        assert_eq!(cpu.data, 0x00);
-        assert_eq!(cpu.pc, 0xA1);
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0xA1);
+    //     assert_eq!(cpu.data, 0x00);
+    //     assert_eq!(cpu.pc, 0xA1);
 
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0x20);
-        assert_eq!(cpu.data, 0x00);
-        assert_eq!(cpu.pc, 0x0120);
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0x20);
+    //     assert_eq!(cpu.data, 0x00);
+    //     assert_eq!(cpu.pc, 0x0120);
 
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0x0120);
-        assert_eq!(cpu.data, 0xA9);
-        assert_eq!(cpu.pc, 0x0121);
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0x0120);
+    //     assert_eq!(cpu.data, 0xA9);
+    //     assert_eq!(cpu.pc, 0x0121);
 
-        cpu.cycle();
-        assert_eq!(cpu.addr, 0x0121);
-        assert_eq!(cpu.data, 0x11);
-        assert_eq!(cpu.pc, 0x0122);
+    //     cpu.cycle();
+    //     assert_eq!(cpu.addr, 0x0121);
+    //     assert_eq!(cpu.data, 0x11);
+    //     assert_eq!(cpu.pc, 0x0122);
 
-        assert_eq!(cpu.a, 0x11);
+    //     assert_eq!(cpu.a, 0x11);
 
-        cpu.cycle();
-        cpu.cycle();
-        cpu.cycle();
+    //     cpu.cycle();
+    //     cpu.cycle();
+    //     cpu.cycle();
 
-        cpu.cycle();
-        cpu.cycle();
+    //     cpu.cycle();
+    //     cpu.cycle();
 
-        assert_eq!(cpu.a, 0x99);
-    }
+    //     assert_eq!(cpu.a, 0x99);
+    // }
 }

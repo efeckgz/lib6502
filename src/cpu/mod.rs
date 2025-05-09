@@ -51,6 +51,9 @@ pub enum AddressingMode {
     IndirectY,
 }
 
+// pc, s, a, x, y, p
+pub type RegisterState = (u16, u8, u8, u8, u8, u8);
+
 // Inner state of the processor, used in state machine.
 enum State {
     // Reset states
@@ -137,6 +140,29 @@ impl<'a> Cpu<'a> {
             p: 0,
             s: 0xFF,                 // Start at stack top - not the specified behavior
             state: State::ResetHold, // Start the cpu at the reset state.
+            cur_mode: AddressingMode::None,
+            cur_nmeonic: Nmeonic::None,
+            bus,
+            addr: 0,
+            data: 0,
+            read: false,
+            latch_u8: 0,
+            latch_u16: 0,
+        }
+    }
+
+    pub fn from_register_state(
+        (pc, s, a, x, y, p): RegisterState,
+        bus: &'a mut dyn BusDevice,
+    ) -> Self {
+        Self {
+            a,
+            x,
+            y,
+            pc,
+            p,
+            s,
+            state: State::ResetHold,
             cur_mode: AddressingMode::None,
             cur_nmeonic: Nmeonic::None,
             bus,
