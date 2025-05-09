@@ -178,7 +178,7 @@ impl<'a> Cpu<'a> {
             pc,
             p,
             s,
-            state: State::ResetHold,
+            state: State::FetchOpcode(NOT_FROM_BRANCH),
             cur_mode: AddressingMode::None,
             cur_nmeonic: Nmeonic::None,
             bus,

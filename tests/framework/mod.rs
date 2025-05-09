@@ -16,7 +16,7 @@ pub struct Test {
     pub cycles: Vec<(u16, u8, String)>, // address, value, read/write
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct State {
     pub pc: u16,
     pub s: u8,
@@ -42,6 +42,10 @@ impl State {
             p,
             ram: vec![],
         }
+    }
+
+    pub fn to_registers(&self) -> RegisterState {
+        (self.pc, self.s, self.a, self.x, self.y, self.p)
     }
 }
 
