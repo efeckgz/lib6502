@@ -190,6 +190,10 @@ impl<'a> Cpu<'a> {
         }
     }
 
+    pub fn to_state(&self) -> RegisterState {
+        (self.pc, self.s, self.a, self.x, self.y, self.p)
+    }
+
     // Emulate 1 cpu cycle.
     pub fn cycle(&mut self) {
         match self.state {

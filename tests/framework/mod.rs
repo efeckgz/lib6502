@@ -1,4 +1,7 @@
-use lib6502::{bus::BusDevice, cpu::RegisterState};
+use lib6502::{
+    bus::{Bus, BusDevice},
+    cpu::{Cpu, RegisterState},
+};
 use serde::{Deserialize, Serialize};
 
 const TESTS_DIR: &str = "./65x02/6502/v1";
@@ -16,7 +19,7 @@ pub struct Test {
     pub cycles: Vec<(u16, u8, String)>, // address, value, read/write
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct State {
     pub pc: u16,
     pub s: u8,
@@ -27,12 +30,24 @@ pub struct State {
     pub ram: Vec<(u16, u8)>,
 }
 
+#[derive(Clone)]
 pub struct Ram {
-    bytes: [u8; 65536],
+    pub bytes: [u8; 65536],
 }
 
 impl State {
-    pub fn from_registers((pc, s, a, x, y, p): RegisterState) -> Self {
+    pub fn from(cpu: &Cpu, ram: Ram) -> Self {
+        let mut memdump: Vec<(u16, u8)> = vec![];
+        for (addr, byte) in ram.bytes.iter().enumerate() {
+            if *byte == 0 {
+                continue;
+            }
+
+            memdump.push((addr as u16, *byte));
+        }
+
+        let (pc, s, a, x, y, p) = cpu.to_state();
+
         Self {
             pc,
             s,
@@ -40,9 +55,20 @@ impl State {
             x,
             y,
             p,
-            ram: vec![],
+            ram: memdump,
         }
     }
+    // pub fn from_registers((pc, s, a, x, y, p): RegisterState) -> Self {
+    //     Self {
+    //         pc,
+    //         s,
+    //         a,
+    //         x,
+    //         y,
+    //         p,
+    //         ram: vec![],
+    //     }
+    // }
 
     pub fn to_registers(&self) -> RegisterState {
         (self.pc, self.s, self.a, self.x, self.y, self.p)
@@ -77,4 +103,30 @@ pub fn load_test(name: &str) -> Vec<Test> {
     let test_name = TESTS_DIR.to_owned() + &format!("/{}.json", name);
     let bytes = std::fs::read(test_name).unwrap();
     serde_json::from_slice(&bytes).unwrap()
+}
+
+pub fn run_test(test_name: &str) {
+    let tests = load_test(test_name);
+    let t = &tests[0];
+
+    let init = &t.initial_state;
+    let final_state = &t.final_state;
+
+    let mut bus: Bus<1> = Bus::new();
+    let mut ram = Ram::new();
+
+    ram.load_from_state(init.clone());
+    bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
+
+    let mut cpu = Cpu::from_register_state(init.to_registers(), &mut bus);
+
+    for c in &t.cycles {
+        let (addr, data, rw) = c;
+        let read = if rw == "read" { true } else { false };
+
+        cpu.cycle();
+        assert_eq!(cpu.addr, *addr);
+        assert_eq!(cpu.data, *data);
+        assert_eq!(cpu.read, read);
+    }
 }
