@@ -54,21 +54,8 @@ fn it_works() {
     assert_eq!(42, 42);
 }
 
-fn get_entries() -> Vec<std::path::PathBuf> {
-    let mut entries = fs::read_dir(TESTS_DIR)
-        .unwrap()
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, io::Error>>()
-        .unwrap();
-
-    entries.sort();
-
-    entries
-}
-
 fn load_test(name: &str) -> Vec<Test> {
     let test_name = TESTS_DIR.to_owned() + &format!("/{}.json", name);
-    println!("Test name: {}", test_name);
     let bytes = fs::read(test_name).unwrap();
     serde_json::from_slice(&bytes).unwrap()
 }
