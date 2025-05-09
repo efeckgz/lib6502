@@ -5,7 +5,7 @@ pub mod cpu;
 
 use bus::BusDevice;
 
-pub struct Memory {
+struct Memory {
     bytes: [u8; 65536],
 }
 
