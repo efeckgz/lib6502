@@ -1,30 +1,34 @@
-use lib6502::cpu::RegisterState;
+use lib6502::{bus::BusDevice, cpu::RegisterState};
 use serde::{Deserialize, Serialize};
 
 const TESTS_DIR: &str = "./65x02/6502/v1";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Test {
-    name: String,
+    pub name: String,
 
     #[serde(rename(deserialize = "initial"))]
-    initial_state: State,
+    pub initial_state: State,
 
     #[serde(rename(deserialize = "final"))]
-    final_state: State,
+    pub final_state: State,
 
-    cycles: Vec<(u16, u8, String)>, // address, value, read/write
+    pub cycles: Vec<(u16, u8, String)>, // address, value, read/write
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct State {
-    pc: u16,
-    s: u8,
-    a: u8,
-    x: u8,
-    y: u8,
-    p: u8,
-    ram: Vec<(u16, u8)>,
+    pub pc: u16,
+    pub s: u8,
+    pub a: u8,
+    pub x: u8,
+    pub y: u8,
+    pub p: u8,
+    pub ram: Vec<(u16, u8)>,
+}
+
+pub struct Ram {
+    bytes: [u8; 65536],
 }
 
 impl State {
@@ -38,6 +42,30 @@ impl State {
             p,
             ram: vec![],
         }
+    }
+}
+
+impl Ram {
+    pub fn new() -> Self {
+        Self {
+            bytes: [0_u8; 65536],
+        }
+    }
+
+    pub fn load_from_state(&mut self, st: State) {
+        for (addr, byte) in st.ram {
+            self.write(addr, byte);
+        }
+    }
+}
+
+impl BusDevice for Ram {
+    fn read(&mut self, addr: u16) -> u8 {
+        self.bytes[addr as usize]
+    }
+
+    fn write(&mut self, addr: u16, data: u8) {
+        self.bytes[addr as usize] = data;
     }
 }
 
