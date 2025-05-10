@@ -322,23 +322,15 @@ impl<'a> Cpu<'a> {
         if branch_taken {
             // If we are here, it means the from_branch flag is set therefore self.latch_u8 contains the branch offset.
             let offset = self.latch_u8 as i8;
-            // let pch = (self.pc & 0xFF00) >> 8;
             let pch = self.pc & 0xFF00;
             let old_pcl = (self.pc & 0x00FF) as u8;
             let (new_pcl, boundry_crossed) = old_pcl.overflowing_add_signed(offset);
 
-            println!(
-                "old: {:#04X} new: {:#04X}, offset {}, offset_hex: {:#04X} latch_u8: {:#04X}",
-                old_pcl, new_pcl, offset, offset, self.latch_u8
-            );
-
             if boundry_crossed {
-                // todo!("Take another cycle if branch results in page boundry cross");
                 self.latch_u16 = pch + new_pcl as u16;
                 self.state = State::PageCrossed(offset > 0);
             } else {
                 self.pc = pch + new_pcl as u16;
-                println!("New program counter no cross: {:#04X}.", self.pc);
                 self.state = State::FetchOpcode(NOT_FROM_BRANCH);
             }
 
@@ -858,11 +850,11 @@ impl<'a> Cpu<'a> {
         self.read = true;
         self.access_bus();
         self.pc = if page_up {
-            self.latch_u16 + 0x0100
+            self.latch_u16.wrapping_add(0x0100)
         } else {
-            self.latch_u16 - 0x0100
+            self.latch_u16.wrapping_sub(0x0100)
         };
-        println!("New program counter page cross: {:#04X}.", self.pc);
+
         self.state = State::FetchOpcode(NOT_FROM_BRANCH);
     }
 
