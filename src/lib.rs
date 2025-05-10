@@ -3,43 +3,40 @@
 pub mod bus;
 pub mod cpu;
 
-use bus::BusDevice;
-
-struct Memory {
-    bytes: [u8; 65536],
-}
-
-impl BusDevice for Memory {
-    fn read(&mut self, addr: u16) -> u8 {
-        self.bytes[addr as usize]
-    }
-
-    fn write(&mut self, addr: u16, data: u8) {
-        self.bytes[addr as usize] = data;
-    }
-}
-
-impl Memory {
-    pub fn new() -> Self {
-        Self { bytes: [0; 65536] }
-    }
-
-    pub fn load_program(&mut self, program: &[u8]) {
-        for (i, byte) in program.iter().enumerate() {
-            self.bytes[i] = *byte;
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::cpu::Flags;
 
     use super::*;
 
-    use bus::Bus;
+    use bus::{Bus, BusDevice};
     use cpu::Cpu;
 
+    struct Memory {
+        bytes: [u8; 65536],
+    }
+
+    impl BusDevice for Memory {
+        fn read(&mut self, addr: u16) -> u8 {
+            self.bytes[addr as usize]
+        }
+
+        fn write(&mut self, addr: u16, data: u8) {
+            self.bytes[addr as usize] = data;
+        }
+    }
+
+    impl Memory {
+        pub fn new() -> Self {
+            Self { bytes: [0; 65536] }
+        }
+
+        pub fn load_program(&mut self, program: &[u8]) {
+            for (i, byte) in program.iter().enumerate() {
+                self.bytes[i] = *byte;
+            }
+        }
+    }
     #[test]
     fn it_works() {
         let mut bus: Bus<1> = Bus::new();
