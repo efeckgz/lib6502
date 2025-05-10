@@ -1,20 +1,20 @@
 mod framework;
 
-use framework::run_test;
+use framework::run_tests;
 
 #[test]
 fn sst() {
     // lda
-    run_test("A9");
-    run_test("A5");
-    run_test("AD");
+    run_tests("A9");
+    run_tests("A5");
+    run_tests("AD");
 
-    run_test("90"); // bcc
-    run_test("B0"); // bcs
-    run_test("F0"); // beq
-    run_test("30"); // bmi
-    run_test("D0"); // bne
-    run_test("10"); // bpl
-    run_test("50"); // bvc
-    run_test("70"); // bvs
+    run_tests("90"); // bcc
+    run_tests("B0"); // bcs
+    run_tests("F0"); // beq
+    run_tests("30"); // bmi
+    run_tests("D0"); // bne
+    run_tests("10"); // bpl
+    run_tests("50"); // bvc
+    run_tests("70"); // bvs
 }

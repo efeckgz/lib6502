@@ -1,101 +1,17 @@
-use lib6502::{
-    bus::{Bus, BusDevice},
-    cpu::{Cpu, RegisterState},
-};
+mod utils;
 
-use serde::{Deserialize, Serialize};
+use lib6502::bus::Bus;
+use lib6502::cpu::Cpu;
+use utils::{Ram, State, TESTS_DIR, Test};
 
-const TESTS_DIR: &str = "./65x02/6502/v1";
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Test {
-    pub name: String,
-
-    #[serde(rename(deserialize = "initial"))]
-    pub initial_state: State,
-
-    #[serde(rename(deserialize = "final"))]
-    pub final_state: State,
-
-    pub cycles: Vec<(u16, u8, String)>, // address, value, read/write
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-struct State {
-    pub pc: u16,
-    pub s: u8,
-    pub a: u8,
-    pub x: u8,
-    pub y: u8,
-    pub p: u8,
-    pub ram: Vec<(u16, u8)>,
-}
-
-#[derive(Clone)]
-struct Ram {
-    pub bytes: [u8; 65536],
-}
-
-impl State {
-    fn from((pc, s, a, x, y, p): RegisterState, ram: Vec<(u16, u8)>) -> Self {
-        Self {
-            pc,
-            s,
-            a,
-            x,
-            y,
-            p,
-            ram,
-        }
-    }
-
-    fn to_registers(&self) -> RegisterState {
-        (self.pc, self.s, self.a, self.x, self.y, self.p)
-    }
-}
-
-impl Ram {
-    fn new() -> Self {
-        Self {
-            bytes: [0_u8; 65536],
-        }
-    }
-
-    fn load_from_state(&mut self, st: State) {
-        for (addr, byte) in st.ram {
-            self.write(addr, byte);
-        }
-    }
-
-    fn get_state(&mut self, st: &State) -> Vec<(u16, u8)> {
-        let mut res: Vec<(u16, u8)> = vec![];
-        let supposed = st.ram.clone();
-        for (addr, _) in supposed.iter() {
-            let data = self.read(*addr);
-            res.push((*addr as u16, data));
-        }
-        res
-    }
-}
-
-impl BusDevice for Ram {
-    fn read(&mut self, addr: u16) -> u8 {
-        self.bytes[addr as usize]
-    }
-
-    fn write(&mut self, addr: u16, data: u8) {
-        self.bytes[addr as usize] = data;
-    }
-}
-
-pub fn run_test(test_name: &str) {
-    let tests = load_test(test_name);
+pub fn run_tests(opcode: &str) {
+    let tests = load_tests(opcode);
     for test in tests {
         run_single_test(test);
     }
 }
 
-fn load_test(name: &str) -> Vec<Test> {
+fn load_tests(name: &str) -> Vec<Test> {
     let test_name = TESTS_DIR.to_owned() + &format!("/{}.json", name);
     let bytes = std::fs::read(test_name).unwrap();
     serde_json::from_slice(&bytes).unwrap()
@@ -124,10 +40,6 @@ fn run_single_test(t: Test) {
         assert_eq!(cpu.read, read);
     }
 
-    let final_regs = cpu.to_state();
-    let final_ram = ram.get_state(final_state);
-
-    let final_cpu = State::from(final_regs, final_ram);
-
+    let final_cpu = State::new(cpu.get_state(), ram.get_state(final_state));
     assert_eq!(final_cpu, *final_state);
 }

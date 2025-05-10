@@ -174,7 +174,7 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    pub fn to_state(&self) -> RegisterState {
+    pub fn get_state(&self) -> RegisterState {
         (self.pc, self.s, self.a, self.x, self.y, self.p)
     }
 
