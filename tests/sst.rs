@@ -29,6 +29,40 @@ fn sst() {
     run_tests("9A");
     run_tests("98");
 
+    // implied other
+    // run_tests("00"); CHECK
+    run_tests("48");
+    // run_tests("08"); CHECK
+    run_tests("68");
+    // run_tests("28"); CHECK
+    // run_tests("40");
+    // run_tests("60");
+
+    // Absolute
+    run_tests("6D");
+    run_tests("2D");
+    run_tests("0E");
+    run_tests("2C");
+    run_tests("CD");
+    run_tests("EC");
+    run_tests("CC");
+    run_tests("CE");
+    run_tests("4D");
+    run_tests("EE");
+    run_tests("4C");
+    run_tests("20");
+    run_tests("AD");
+    run_tests("AE");
+    run_tests("AC");
+    run_tests("4E");
+    run_tests("0D");
+    run_tests("2E");
+    run_tests("6E");
+    run_tests("ED");
+    run_tests("8D");
+    run_tests("8E");
+    run_tests("8C");
+
     run_tests("90"); // bcc
     run_tests("B0"); // bcs
     run_tests("F0"); // beq
