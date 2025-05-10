@@ -97,15 +97,13 @@ pub fn load_test(name: &str) -> Vec<Test> {
 
 pub fn run_test(test_name: &str) {
     let tests = load_test(test_name);
-    let mut testno = 0;
     for test in tests {
-        println!("Running test {} for {}", testno, test_name);
         run_single_test(test);
-        testno += 1;
     }
 }
 
 fn run_single_test(t: Test) {
+    println!("Running test {}", t.name);
     let init = &t.initial_state;
     let final_state = &t.final_state;
 
