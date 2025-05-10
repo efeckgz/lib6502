@@ -2,12 +2,13 @@ use lib6502::{
     bus::{Bus, BusDevice},
     cpu::{Cpu, RegisterState},
 };
+
 use serde::{Deserialize, Serialize};
 
 const TESTS_DIR: &str = "./65x02/6502/v1";
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Test {
+struct Test {
     pub name: String,
 
     #[serde(rename(deserialize = "initial"))]
@@ -20,7 +21,7 @@ pub struct Test {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct State {
+struct State {
     pub pc: u16,
     pub s: u8,
     pub a: u8,
@@ -31,12 +32,12 @@ pub struct State {
 }
 
 #[derive(Clone)]
-pub struct Ram {
+struct Ram {
     pub bytes: [u8; 65536],
 }
 
 impl State {
-    pub fn from((pc, s, a, x, y, p): RegisterState, ram: Vec<(u16, u8)>) -> Self {
+    fn from((pc, s, a, x, y, p): RegisterState, ram: Vec<(u16, u8)>) -> Self {
         Self {
             pc,
             s,
@@ -48,25 +49,25 @@ impl State {
         }
     }
 
-    pub fn to_registers(&self) -> RegisterState {
+    fn to_registers(&self) -> RegisterState {
         (self.pc, self.s, self.a, self.x, self.y, self.p)
     }
 }
 
 impl Ram {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             bytes: [0_u8; 65536],
         }
     }
 
-    pub fn load_from_state(&mut self, st: State) {
+    fn load_from_state(&mut self, st: State) {
         for (addr, byte) in st.ram {
             self.write(addr, byte);
         }
     }
 
-    pub fn get_state(&mut self, st: &State) -> Vec<(u16, u8)> {
+    fn get_state(&mut self, st: &State) -> Vec<(u16, u8)> {
         let mut res: Vec<(u16, u8)> = vec![];
         let supposed = st.ram.clone();
         for (addr, _) in supposed.iter() {
@@ -87,17 +88,17 @@ impl BusDevice for Ram {
     }
 }
 
-pub fn load_test(name: &str) -> Vec<Test> {
-    let test_name = TESTS_DIR.to_owned() + &format!("/{}.json", name);
-    let bytes = std::fs::read(test_name).unwrap();
-    serde_json::from_slice(&bytes).unwrap()
-}
-
 pub fn run_test(test_name: &str) {
     let tests = load_test(test_name);
     for test in tests {
         run_single_test(test);
     }
+}
+
+fn load_test(name: &str) -> Vec<Test> {
+    let test_name = TESTS_DIR.to_owned() + &format!("/{}.json", name);
+    let bytes = std::fs::read(test_name).unwrap();
+    serde_json::from_slice(&bytes).unwrap()
 }
 
 fn run_single_test(t: Test) {
