@@ -53,15 +53,6 @@ pub enum AddressingMode {
 
 // pc, s, a, x, y, p
 pub type RegisterState = (u16, u8, u8, u8, u8, u8);
-// #[cfg_attr(test, derive(serde::Serialize, serde::Deserialize))]
-// pub struct RegisterState {
-//     pc: u16,
-//     s: u8,
-//     a: u8,
-//     x: u8,
-//     y: u8,
-//     p: u8,
-// }
 
 // Inner state of the processor, used in state machine.
 enum State {
@@ -164,13 +155,6 @@ impl<'a> Cpu<'a> {
         (pc, s, a, x, y, p): RegisterState,
         bus: &'a mut dyn BusDevice,
     ) -> Self {
-        // let a = st.a;
-        // let x = st.x;
-        // let y = st.y;
-        // let pc = st.pc;
-        // let p = st.p;
-        // let s = st.s;
-
         Self {
             a,
             x,
