@@ -7,5 +7,5 @@ fn sst() {
     run_test("A9");
     run_test("A5");
     run_test("AD");
-    run_test("20");
+    run_test("E9");
 }
