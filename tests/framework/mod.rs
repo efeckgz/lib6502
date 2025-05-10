@@ -36,18 +36,7 @@ pub struct Ram {
 }
 
 impl State {
-    pub fn from(cpu: &Cpu, ram: Ram) -> Self {
-        let mut memdump: Vec<(u16, u8)> = vec![];
-        for (addr, byte) in ram.bytes.iter().enumerate() {
-            if *byte == 0 {
-                continue;
-            }
-
-            memdump.push((addr as u16, *byte));
-        }
-
-        let (pc, s, a, x, y, p) = cpu.to_state();
-
+    pub fn from((pc, s, a, x, y, p): RegisterState, ram: Vec<(u16, u8)>) -> Self {
         Self {
             pc,
             s,
@@ -55,20 +44,9 @@ impl State {
             x,
             y,
             p,
-            ram: memdump,
+            ram,
         }
     }
-    // pub fn from_registers((pc, s, a, x, y, p): RegisterState) -> Self {
-    //     Self {
-    //         pc,
-    //         s,
-    //         a,
-    //         x,
-    //         y,
-    //         p,
-    //         ram: vec![],
-    //     }
-    // }
 
     pub fn to_registers(&self) -> RegisterState {
         (self.pc, self.s, self.a, self.x, self.y, self.p)
@@ -86,6 +64,18 @@ impl Ram {
         for (addr, byte) in st.ram {
             self.write(addr, byte);
         }
+    }
+
+    pub fn get_state(&self) -> Vec<(u16, u8)> {
+        let mut res: Vec<(u16, u8)> = vec![];
+        for (addr, byte) in self.bytes.iter().enumerate() {
+            if *byte == 0 {
+                continue;
+            }
+
+            res.push((addr as u16, *byte));
+        }
+        res
     }
 }
 
@@ -107,8 +97,15 @@ pub fn load_test(name: &str) -> Vec<Test> {
 
 pub fn run_test(test_name: &str) {
     let tests = load_test(test_name);
-    let t = &tests[0];
+    let mut testno = 0;
+    for test in tests {
+        println!("Running test {} for {}", testno, test_name);
+        run_single_test(test);
+        testno += 1;
+    }
+}
 
+fn run_single_test(t: Test) {
     let init = &t.initial_state;
     let final_state = &t.final_state;
 
@@ -129,4 +126,11 @@ pub fn run_test(test_name: &str) {
         assert_eq!(cpu.data, *data);
         assert_eq!(cpu.read, read);
     }
+
+    let final_regs = cpu.to_state();
+    let final_ram = ram.get_state();
+
+    let final_cpu = State::from(final_regs, final_ram);
+
+    assert_eq!(final_cpu, *final_state);
 }
