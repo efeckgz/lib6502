@@ -66,14 +66,12 @@ impl Ram {
         }
     }
 
-    pub fn get_state(&self) -> Vec<(u16, u8)> {
+    pub fn get_state(&mut self, st: &State) -> Vec<(u16, u8)> {
         let mut res: Vec<(u16, u8)> = vec![];
-        for (addr, byte) in self.bytes.iter().enumerate() {
-            if *byte == 0 {
-                continue;
-            }
-
-            res.push((addr as u16, *byte));
+        let supposed = st.ram.clone();
+        for (addr, _) in supposed.iter() {
+            let data = self.read(*addr);
+            res.push((*addr as u16, data));
         }
         res
     }
@@ -125,10 +123,10 @@ fn run_single_test(t: Test) {
         assert_eq!(cpu.read, read);
     }
 
-    // let final_regs = cpu.to_state();
-    // let final_ram = ram.get_state();
+    let final_regs = cpu.to_state();
+    let final_ram = ram.get_state(final_state);
 
-    // let final_cpu = State::from(final_regs, final_ram);
+    let final_cpu = State::from(final_regs, final_ram);
 
-    // assert_eq!(final_cpu, *final_state);
+    assert_eq!(final_cpu, *final_state);
 }
