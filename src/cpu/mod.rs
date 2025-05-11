@@ -178,6 +178,10 @@ impl<'a> Cpu<'a> {
         (self.pc, self.s, self.a, self.x, self.y, self.p)
     }
 
+    pub fn get_bus_pins(&self) -> (u16, u8, bool) {
+        (self.addr, self.data, self.read)
+    }
+
     // Emulate 1 cpu cycle.
     pub fn cycle(&mut self) {
         match self.state {
@@ -884,10 +888,52 @@ impl<'a> Cpu<'a> {
         // Currently does not handle bcd mode addition.
         let a_prev = self.a;
         let val = self.data;
-        let (mut result, mut overflow) = self.a.overflowing_add(val);
-        if self.flag_set(Flags::Carry) {
-            (result, overflow) = result.overflowing_add(1);
-        }
+
+        let (result, overflow) = if self.flag_set(Flags::Decimal) {
+            let mut res = a_prev + val;
+            let mut carry = false;
+            if (res & 0x0F) > 9 {
+                res = res.wrapping_add(0x06);
+            }
+
+            if res > 0x99 {
+                res = res.wrapping_add(0x60);
+                carry = true;
+            }
+
+            (res, carry)
+        } else {
+            let (mut res, mut of) = a_prev.overflowing_add(val);
+            if self.flag_set(Flags::Carry) {
+                (res, of) = res.overflowing_add(1);
+            }
+
+            (res, of)
+        };
+
+        // let mut overflow = false;
+        // let mut result = 0_u8;
+
+        // if self.flag_set(Flags::Decimal) {
+        //     // Handle bcd addition
+        //     result = a_prev + val;
+        //     if (result & 0x0F) > 9 {
+        //         // result += 0x06;
+        //         result = result.wrapping_add(0x06);
+        //     }
+
+        //     if result > 0x99 {
+        //         // result += 0x60;
+        //         result = result.wrapping_add(0x60);
+        //         overflow = true;
+        //     }
+        // } else {
+        //     (result, overflow) = self.a.overflowing_add(val);
+        //     if self.flag_set(Flags::Carry) {
+        //         (result, overflow) = result.overflowing_add(1);
+        //     }
+        // }
+
         self.a = result;
 
         // Flags
