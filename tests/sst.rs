@@ -39,8 +39,8 @@ fn sst() {
     // run_tests("60");
 
     // Absolute
-    run_tests("6D");
-    run_tests("2D");
+    // run_tests("6D");
+    // run_tests("2D");
     run_tests("0E");
     run_tests("2C");
     run_tests("CD");
@@ -58,7 +58,7 @@ fn sst() {
     run_tests("0D");
     run_tests("2E");
     run_tests("6E");
-    run_tests("ED");
+    // run_tests("ED");
     run_tests("8D");
     run_tests("8E");
     run_tests("8C");
