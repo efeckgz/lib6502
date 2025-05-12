@@ -888,7 +888,6 @@ impl<'a> Cpu<'a> {
         // Currently does not handle bcd mode addition.
         let a_prev = self.a;
         let val = self.data;
-        println!("A: {:#04X}, val: {:#04X}", a_prev, val);
         // if self.flag_set(Flags::Decimal) {
         //     // let mut res = a_prev + val;
         //     let mut res = a_prev.wrapping_add(val);
@@ -918,13 +917,10 @@ impl<'a> Cpu<'a> {
         // (res, carry)
         // } else {
         let (mut res, mut of) = a_prev.overflowing_add(val);
-        println!("res, of before carry: {:#04X}, {}", res, of);
         if self.flag_set(Flags::Carry) {
             let (fin, of2) = res.overflowing_add(1);
             res = fin;
             of = of || of2;
-
-            println!("res, of after carry: {:#04X}, {}", res, of);
         }
 
         self.a = res;
