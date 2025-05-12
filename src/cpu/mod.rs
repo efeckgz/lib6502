@@ -933,7 +933,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn and(&mut self) {
-        self.a ^= self.data;
+        self.a &= self.data;
 
         // Set flags
         self.set_flag(Flags::Zero, self.a == 0);

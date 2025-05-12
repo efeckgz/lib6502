@@ -40,7 +40,7 @@ fn sst() {
 
     // Absolute
     run_tests("6D");
-    // run_tests("2D");
+    run_tests("2D");
     run_tests("0E");
     run_tests("2C");
     run_tests("CD");
