@@ -888,62 +888,52 @@ impl<'a> Cpu<'a> {
         // Currently does not handle bcd mode addition.
         let a_prev = self.a;
         let val = self.data;
-
-        let (result, overflow) = if self.flag_set(Flags::Decimal) {
-            let mut res = a_prev + val;
-            let mut carry = false;
-            if (res & 0x0F) > 9 {
-                res = res.wrapping_add(0x06);
-            }
-
-            if res > 0x99 {
-                res = res.wrapping_add(0x60);
-                carry = true;
-            }
-
-            (res, carry)
-        } else {
-            let (mut res, mut of) = a_prev.overflowing_add(val);
-            if self.flag_set(Flags::Carry) {
-                (res, of) = res.overflowing_add(1);
-            }
-
-            (res, of)
-        };
-
-        // let mut overflow = false;
-        // let mut result = 0_u8;
-
+        println!("A: {:#04X}, val: {:#04X}", a_prev, val);
         // if self.flag_set(Flags::Decimal) {
-        //     // Handle bcd addition
-        //     result = a_prev + val;
-        //     if (result & 0x0F) > 9 {
-        //         // result += 0x06;
-        //         result = result.wrapping_add(0x06);
-        //     }
-
-        //     if result > 0x99 {
-        //         // result += 0x60;
-        //         result = result.wrapping_add(0x60);
-        //         overflow = true;
-        //     }
-        // } else {
-        //     (result, overflow) = self.a.overflowing_add(val);
+        //     // let mut res = a_prev + val;
+        //     let mut res = a_prev.wrapping_add(val);
         //     if self.flag_set(Flags::Carry) {
-        //         (result, overflow) = result.overflowing_add(1);
+        //         res = res.wrapping_add(1);
         //     }
+
+        //     let mut carry = false;
+        //     if (res & 0x0F) > 9 {
+        //         res = res.wrapping_add(0x06);
+        //     }
+
+        //     // Set the N and V flags before decimal correcting the high nibble
+        //     self.set_flag(Flags::Negative, (res & 0x80) != 0);
+        //     self.set_flag(Flags::Overflow, ((a_prev ^ res) & (val ^ res) & 0x80) != 0);
+
+        //     if res > 0x99 {
+        //         res = res.wrapping_add(0x60);
+        //         carry = true;
+        //     }
+
+        //     self.a = res;
+
+        //     self.set_flag(Flags::Carry, carry);
+        //     self.set_flag(Flags::Zero, res == 0);
+
+        // (res, carry)
+        // } else {
+        let (mut res, mut of) = a_prev.overflowing_add(val);
+        println!("res, of before carry: {:#04X}, {}", res, of);
+        if self.flag_set(Flags::Carry) {
+            let (fin, of2) = res.overflowing_add(1);
+            res = fin;
+            of = of || of2;
+
+            println!("res, of after carry: {:#04X}, {}", res, of);
+        }
+
+        self.a = res;
+
+        self.set_flag(Flags::Carry, of);
+        self.set_flag(Flags::Zero, res == 0);
+        self.set_flag(Flags::Negative, (res & 0x80) != 0);
+        self.set_flag(Flags::Overflow, ((a_prev ^ res) & (val ^ res) & 0x80) != 0); // (res, of)
         // }
-
-        self.a = result;
-
-        // Flags
-        self.set_flag(Flags::Carry, overflow);
-        self.set_flag(Flags::Zero, self.a == 0);
-        self.set_flag(
-            Flags::Overflow,
-            ((a_prev ^ result) & (val ^ result) & 0x80) != 0,
-        );
-        self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }
 
     fn and(&mut self) {
