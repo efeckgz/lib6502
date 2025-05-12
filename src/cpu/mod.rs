@@ -1303,14 +1303,25 @@ impl<'a> Cpu<'a> {
     fn sbc(&mut self) {
         let a_prev = self.a;
         let val = self.data;
+
         let (mut result, mut overflow) = self.a.overflowing_sub(val);
+        println!("Result, overflow before carry: {}, {}", result, overflow);
         if !self.flag_set(Flags::Carry) {
-            (result, overflow) = result.overflowing_sub(1);
+            let (result_fixed, overflow_fixed) = result.overflowing_sub(1);
+            println!(
+                "Result, overflow after carry: {}, {}",
+                result_fixed, overflow_fixed
+            );
+
+            result = result_fixed;
+            overflow = overflow || overflow_fixed;
+            println!("Result, overflow final: {}, {}", result, overflow);
         }
 
         self.a = result;
 
-        self.set_flag(Flags::Carry, overflow);
+        // Set the carry flag the inverse of borrow, passes some fails some.
+        self.set_flag(Flags::Carry, !overflow);
         self.set_flag(Flags::Zero, self.a == 0);
         self.set_flag(
             Flags::Overflow,
