@@ -30,6 +30,7 @@ fn run_single_test(t: Test) {
 
     let mut cpu = Cpu::from_register_state(init.to_registers(), &mut bus);
 
+    let mut i = 0;
     for c in &t.cycles {
         let (addr, data, rw) = c;
         let read = if rw == "read" { true } else { false };
@@ -40,6 +41,9 @@ fn run_single_test(t: Test) {
         assert_eq!(cpu_addr, *addr);
         assert_eq!(cpu_data, *data);
         assert_eq!(cpu_rw, read);
+
+        // println!("\tCycle {} pass.", i);
+        i += 1;
     }
 
     let final_cpu = State::new(cpu.get_state(), ram.get_state(final_state));
