@@ -428,6 +428,7 @@ impl<'a> Cpu<'a> {
         self.addr = self.pc;
         self.read = true;
         self.access_bus();
+        self.latch_u8 = self.data;
         self.pc = self.pc.wrapping_add(1);
 
         match self.cur_nmeonic {
@@ -548,6 +549,7 @@ impl<'a> Cpu<'a> {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
+                self.latch_u8 = self.data;
                 self.adc()
             }
             Nmeonic::AND => {
@@ -614,7 +616,9 @@ impl<'a> Cpu<'a> {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
-                self.sbc()
+                self.latch_u8 = self.data ^ 0xFF;
+                // self.sbc()
+                self.adc();
             }
             // Store instruction functions perform their bus operations.
             // They perform bus write on latch_u16
@@ -666,6 +670,7 @@ impl<'a> Cpu<'a> {
                 self.addr = self.latch_u8 as u16;
                 self.read = true;
                 self.access_bus();
+                self.latch_u8 = self.data;
                 self.adc()
             }
             Nmeonic::AND => {
@@ -732,7 +737,9 @@ impl<'a> Cpu<'a> {
                 self.addr = self.latch_u8 as u16;
                 self.read = true;
                 self.access_bus();
-                self.sbc()
+                self.latch_u8 = self.data ^ 0xFF;
+                self.adc();
+                // self.sbc()
             }
             _ => todo!("Remaining zero page mode instructions"),
         }
@@ -887,7 +894,7 @@ impl<'a> Cpu<'a> {
     fn adc(&mut self) {
         // Currently does not handle bcd mode addition.
         let a_prev = self.a;
-        let val = self.data;
+        let val = self.latch_u8;
         // if self.flag_set(Flags::Decimal) {
         //     // let mut res = a_prev + val;
         //     let mut res = a_prev.wrapping_add(val);
@@ -1301,33 +1308,37 @@ impl<'a> Cpu<'a> {
     }
 
     fn sbc(&mut self) {
-        let a_prev = self.a;
-        let val = self.data;
+        // self.data ^= 0xFF;
+        // self.adc();
 
-        let (mut result, mut overflow) = self.a.overflowing_sub(val);
-        println!("Result, overflow before carry: {}, {}", result, overflow);
-        if !self.flag_set(Flags::Carry) {
-            let (result_fixed, overflow_fixed) = result.overflowing_sub(1);
-            println!(
-                "Result, overflow after carry: {}, {}",
-                result_fixed, overflow_fixed
-            );
+        // let a_prev = self.a;
+        // let val = self.data;
 
-            result = result_fixed;
-            overflow = overflow || overflow_fixed;
-            println!("Result, overflow final: {}, {}", result, overflow);
-        }
+        // let (mut result, mut overflow) = self.a.overflowing_sub(val);
+        // println!("Result, overflow before carry: {}, {}", result, overflow);
+        // if !self.flag_set(Flags::Carry) {
+        //     let (result_fixed, overflow_fixed) = result.overflowing_sub(1);
+        //     println!(
+        //         "Result, overflow after carry: {}, {}",
+        //         result_fixed, overflow_fixed
+        //     );
 
-        self.a = result;
+        //     result = result_fixed;
+        //     overflow = overflow || overflow_fixed;
+        //     println!("Result, overflow final: {}, {}", result, overflow);
+        // }
 
-        // Set the carry flag the inverse of borrow, passes some fails some.
-        self.set_flag(Flags::Carry, !overflow);
-        self.set_flag(Flags::Zero, self.a == 0);
-        self.set_flag(
-            Flags::Overflow,
-            ((a_prev ^ result) & (val ^ result) & 0x80) != 0,
-        );
-        self.set_flag(Flags::Negative, (self.a as i8) < 0);
+        // self.a = result;
+
+        // // Set the carry flag the inverse of borrow, passes some fails some.
+        // // self.set_flag(Flags::Carry, !overflow);
+        // self.set_flag(Flags::Carry, (self.a & 0x80) == 0);
+        // self.set_flag(Flags::Zero, self.a == 0);
+        // self.set_flag(
+        //     Flags::Overflow,
+        //     ((a_prev ^ result) & (val ^ result) & 0x80) != 0,
+        // );
+        // self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }
 
     fn sec(&mut self) {
