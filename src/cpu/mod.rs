@@ -1013,7 +1013,7 @@ impl<'a> Cpu<'a> {
 
     fn brk(&mut self) {
         // Set the break flag in the status register before pushing it to stack
-        self.set_flag(Flags::Break, true);
+        self.set_flag(Flags::InterrputDisable, true);
     }
 
     fn bvc(&mut self) -> bool {
