@@ -298,7 +298,11 @@ impl<'a> Cpu<'a> {
         match self.cur_nmeonic {
             Nmeonic::PHP | Nmeonic::PHA => self.state = State::ImplPush,
             Nmeonic::PLP | Nmeonic::PLA | Nmeonic::RTI => self.state = State::ReadIncS,
-            Nmeonic::BRK => self.state = State::PushPcH,
+            Nmeonic::BRK => {
+                // Look here if there is a pc related issue
+                self.pc = self.pc.wrapping_add(1);
+                self.state = State::PushPcH
+            }
             _ => panic!("Unrecognized nmeonic!"),
         }
     }
