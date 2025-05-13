@@ -30,7 +30,7 @@ fn sst() {
     run_tests("98");
 
     // implied other
-    // run_tests("00"); CHECK
+    run_tests("00");
     run_tests("48");
     // run_tests("08"); CHECK
     run_tests("68");
