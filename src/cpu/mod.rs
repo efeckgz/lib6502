@@ -267,8 +267,12 @@ impl<'a> Cpu<'a> {
 
     fn fetch_first_vec(&mut self, vector: Vectors) {
         // BRK sets the break flag, then clears it and sets the interrupt disable flag
-        if self.flag_set(Flags::Break) {
-            self.set_flag(Flags::Break, false);
+        // if self.flag_set(Flags::Break) {
+        //     self.set_flag(Flags::Break, false);
+        //     self.set_flag(Flags::InterrputDisable, true);
+        // }
+
+        if let Nmeonic::BRK = self.cur_nmeonic {
             self.set_flag(Flags::InterrputDisable, true);
         }
 
@@ -388,7 +392,7 @@ impl<'a> Cpu<'a> {
                 }
 
                 Nmeonic::BRK => {
-                    self.set_flag(Flags::Break, true); // Set the Break flag
+                    // self.set_flag(Flags::Break, true); // Set the Break flag
                     // self.brk();
                     self.state = State::DummyReadPc;
                 }
@@ -851,7 +855,7 @@ impl<'a> Cpu<'a> {
 
     fn push_p(&mut self) {
         self.addr = STACK_BASE + self.s as u16;
-        self.data = self.p;
+        self.data = self.p | 0x10; // Set the B flag when pushing p
         self.read = false;
         self.access_bus();
         self.s = self.s.wrapping_sub(1);
@@ -1207,7 +1211,7 @@ impl<'a> Cpu<'a> {
 
     fn php(&mut self) {
         self.addr = STACK_BASE + self.s as u16;
-        self.data = self.p;
+        self.data = self.p | 0x10;
         self.read = false;
         self.access_bus();
         self.s = self.s.wrapping_sub(1);
