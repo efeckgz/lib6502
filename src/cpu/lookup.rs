@@ -2,7 +2,7 @@ use super::AddressingMode;
 
 pub type Instruction = Option<(AddressingMode, Nmeonic)>;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Nmeonic {
     None,
     ADC,

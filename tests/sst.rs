@@ -36,7 +36,7 @@ fn sst() {
     run_tests("68");
     run_tests("28");
     run_tests("40");
-    // run_tests("60");
+    run_tests("60");
 
     // Absolute
     run_tests("6D");

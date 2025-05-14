@@ -33,7 +33,7 @@ pub struct Cpu<'a> {
     latch_u16: u16,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum AddressingMode {
     None,
     Accumulator,
@@ -307,7 +307,9 @@ impl<'a> Cpu<'a> {
         // May adjust later to accomodate more states
         match self.cur_nmeonic {
             Nmeonic::PHP | Nmeonic::PHA => self.state = State::ImplPush,
-            Nmeonic::PLP | Nmeonic::PLA | Nmeonic::RTI => self.state = State::ReadIncS,
+            Nmeonic::PLP | Nmeonic::PLA | Nmeonic::RTI | Nmeonic::RTS => {
+                self.state = State::ReadIncS
+            }
             Nmeonic::BRK => {
                 // Look here if there is a pc related issue
                 self.pc = self.pc.wrapping_add(1);
@@ -320,9 +322,16 @@ impl<'a> Cpu<'a> {
     // Boolean parameter from_branch indicates the microprocessor should check status flags to see if there is a branch to be taken.
     // It is set to true if the state machine transitions from FetchOffset to FetchOpcode.
     fn fetch_opcode(&mut self, from_branch: bool) {
+        println!(
+            "Addressing mode and nmeonic before this fetch: {:?} {:?}",
+            self.cur_mode, self.cur_nmeonic
+        );
+
         self.addr = self.pc;
         self.read = true;
         self.access_bus();
+
+        println!("Fetched opcode: {:#04X}", self.data);
 
         // Branch is taken if the flags are set accordingly and we are decoding a branch
         let branch_taken = match self.cur_nmeonic {
@@ -404,7 +413,7 @@ impl<'a> Cpu<'a> {
             AddressingMode::Absolute => self.state = State::FetchAbsLo,
             AddressingMode::ZeroPage => self.state = State::FetchZP,
             AddressingMode::Relative => self.state = State::FetchOffset,
-            _ => todo!("Implement remaining states"),
+            _ => println!("{:?}, {:?}", self.cur_mode, self.cur_nmeonic),
         }
     }
 
@@ -493,7 +502,12 @@ impl<'a> Cpu<'a> {
         self.read = true;
         self.access_bus();
         self.s = self.s.wrapping_add(1);
-        self.state = State::ImplPull;
+
+        if let Nmeonic::RTS = self.cur_nmeonic {
+            self.state = State::PullPcL;
+        } else {
+            self.state = State::ImplPull;
+        }
     }
 
     fn impl_pull(&mut self) {
