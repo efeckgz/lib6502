@@ -266,6 +266,12 @@ impl<'a> Cpu<'a> {
     }
 
     fn fetch_first_vec(&mut self, vector: Vectors) {
+        // BRK sets the break flag, then clears it and sets the interrupt disable flag
+        if self.flag_set(Flags::Break) {
+            self.set_flag(Flags::Break, false);
+            self.set_flag(Flags::InterrputDisable, true);
+        }
+
         self.addr = vector as u16;
         self.read = true;
         self.access_bus();
@@ -382,7 +388,8 @@ impl<'a> Cpu<'a> {
                 }
 
                 Nmeonic::BRK => {
-                    self.brk();
+                    self.set_flag(Flags::Break, true); // Set the Break flag
+                    // self.brk();
                     self.state = State::DummyReadPc;
                 }
                 Nmeonic::RTI => self.state = State::DummyReadPc,

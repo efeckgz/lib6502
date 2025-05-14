@@ -42,7 +42,6 @@ fn run_single_test(t: Test) {
         assert_eq!(cpu_data, *data);
         assert_eq!(cpu_rw, read);
 
-        // println!("\tCycle {} pass.", i);
         i += 1;
     }
 
