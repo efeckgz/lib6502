@@ -836,7 +836,7 @@ impl<'a> Cpu<'a> {
         self.addr = STACK_BASE + self.s as u16;
         self.read = true;
         self.access_bus(); // Program counter hi in data bus
-        self.s = self.s.wrapping_add(1);
+        // self.s = self.s.wrapping_add(1);
         let hi = self.data as u16;
 
         self.pc = (hi << 8) | lo;
@@ -1315,7 +1315,8 @@ impl<'a> Cpu<'a> {
         self.read = true;
         self.access_bus(); // P register in data bus
         self.s = self.s.wrapping_add(1);
-        self.p = self.data;
+        // self.p = self.data;
+        self.p = (self.data & 0xCF) | 0x20;
     }
 
     fn rts(&mut self) {
