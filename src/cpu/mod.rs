@@ -1231,7 +1231,7 @@ impl<'a> Cpu<'a> {
         self.addr = STACK_BASE + self.s as u16;
         self.read = true;
         self.access_bus();
-        self.p = self.data;
+        self.p = (self.data & 0xCF) | 0x20; // Ignore the B flag and bit 5
     }
 
     fn rol(&mut self) {

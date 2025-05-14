@@ -34,7 +34,7 @@ fn sst() {
     run_tests("48");
     run_tests("08");
     run_tests("68");
-    // run_tests("28"); CHECK
+    run_tests("28");
     // run_tests("40");
     // run_tests("60");
 
