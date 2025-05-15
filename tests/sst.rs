@@ -71,6 +71,29 @@ fn sst() {
     run_tests("8E");
     run_tests("8C");
 
+    // Zero Page
+    run_tests("65");
+    run_tests("25");
+    run_tests("06");
+    run_tests("24");
+    run_tests("C5");
+    run_tests("E4");
+    run_tests("C4");
+    run_tests("C6");
+    run_tests("45");
+    run_tests("E6");
+    run_tests("A5");
+    run_tests("A6");
+    run_tests("A4");
+    run_tests("46");
+    run_tests("05");
+    run_tests("26");
+    run_tests("66");
+    run_tests("E5");
+    run_tests("85");
+    run_tests("86");
+    run_tests("84");
+
     run_tests("90"); // bcc
     run_tests("B0"); // bcs
     run_tests("F0"); // beq
