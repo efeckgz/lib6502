@@ -18,7 +18,7 @@ fn load_tests(name: &str) -> Vec<Test> {
 }
 
 fn run_single_test(t: Test) {
-    print!("Running test {}\t", t.name);
+    print!("Running test {}", t.name);
     let init = &t.initial_state;
     let final_state = &t.final_state;
 
@@ -30,7 +30,8 @@ fn run_single_test(t: Test) {
 
     let mut cpu = Cpu::from_register_state(init.to_registers(), &mut bus);
 
-    let mut i = 0;
+    let mut i = 1;
+    print!("\tCyles: ");
     for c in &t.cycles {
         let (addr, data, rw) = c;
         let read = if rw == "read" { true } else { false };
@@ -41,13 +42,13 @@ fn run_single_test(t: Test) {
         assert_eq!(cpu_addr, *addr);
         assert_eq!(cpu_data, *data);
         assert_eq!(cpu_rw, read);
-        // println!("Cycle {} works!", i);
+        print!("{} \u{2714} ", i);
         i += 1;
     }
 
     let final_cpu = State::new(cpu.get_state(), ram.get_state(final_state));
     assert_eq!(final_cpu, *final_state);
-    println!("{}", text_green("PASS!"));
+    println!("\t{}", text_green("PASS!"));
 }
 
 fn text_green(s: &str) -> String {
