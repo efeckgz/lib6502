@@ -4,96 +4,95 @@ use framework::run_tests;
 
 #[test]
 fn sst() {
-    // implied 2 cycle
-    run_tests("18");
-    run_tests("D8");
-    run_tests("58");
-    run_tests("B8");
-    run_tests("CA");
-    run_tests("88");
-    run_tests("E8");
-    run_tests("C8");
-    run_tests("EA");
-    run_tests("38");
-    run_tests("F8");
-    run_tests("78");
-    run_tests("AA");
-    run_tests("A8");
-    run_tests("BA");
-    run_tests("8A");
-    run_tests("9A");
-    run_tests("98");
-
-    // implied other
-    run_tests("00");
-    run_tests("48");
-    run_tests("08");
-    run_tests("68");
-    run_tests("28");
-    run_tests("40");
-    run_tests("60");
+    // Implied
+    run_tests("00"); // brk
+    run_tests("18"); // clc
+    run_tests("D8"); // cld
+    run_tests("58"); // cli
+    run_tests("B8"); // clv
+    run_tests("CA"); // dex
+    run_tests("88"); // dey
+    run_tests("E8"); // inx
+    run_tests("C8"); // iny
+    run_tests("EA"); // nop
+    run_tests("48"); // pha
+    run_tests("08"); // php
+    run_tests("68"); // pla
+    run_tests("28"); // plp
+    run_tests("40"); // rti
+    run_tests("60"); // rts
+    run_tests("38"); // sec
+    run_tests("F8"); // sed
+    run_tests("78"); // sei
+    run_tests("AA"); // tax
+    run_tests("A8"); // tay
+    run_tests("BA"); // tsx
+    run_tests("8A"); // txa
+    run_tests("9A"); // txs
+    run_tests("98"); // tya
 
     // Immediate
-    run_tests("69");
-    run_tests("29");
-    run_tests("C9");
-    run_tests("E0");
-    run_tests("C0");
-    run_tests("49");
-    run_tests("A9");
-    run_tests("A2");
-    run_tests("A0");
-    run_tests("09");
-    run_tests("E9");
+    run_tests("69"); // adc
+    run_tests("29"); // and
+    run_tests("C9"); // cmp
+    run_tests("E0"); // cpx
+    run_tests("C0"); // cpy
+    run_tests("49"); // eor
+    run_tests("A9"); // lda
+    run_tests("A2"); // ldx
+    run_tests("A0"); // ldy
+    run_tests("09"); // ora
+    run_tests("E9"); // sbc
 
     // Absolute
-    run_tests("6D");
-    run_tests("2D");
-    run_tests("0E");
-    run_tests("2C");
-    run_tests("CD");
-    run_tests("EC");
-    run_tests("CC");
-    run_tests("CE");
-    run_tests("4D");
-    run_tests("EE");
-    run_tests("4C");
-    run_tests("20");
-    run_tests("AD");
-    run_tests("AE");
-    run_tests("AC");
-    run_tests("4E");
-    run_tests("0D");
-    run_tests("2E");
-    run_tests("6E");
-    run_tests("ED");
-    run_tests("8D");
-    run_tests("8E");
-    run_tests("8C");
+    run_tests("6D"); // adc
+    run_tests("2D"); // and
+    run_tests("0E"); // asl
+    run_tests("2C"); // bit
+    run_tests("CD"); // cmp
+    run_tests("EC"); // cpx
+    run_tests("CC"); // cpy
+    run_tests("CE"); // dec
+    run_tests("4D"); // eor
+    run_tests("EE"); // inc
+    run_tests("4C"); // jmp
+    run_tests("20"); // jsr
+    run_tests("AD"); // lda
+    run_tests("AE"); // ldx
+    run_tests("AC"); // ldy
+    run_tests("4E"); // lsr
+    run_tests("0D"); // ora
+    run_tests("2E"); // rol
+    run_tests("6E"); // ror
+    run_tests("ED"); // sbc
+    run_tests("8D"); // sta
+    run_tests("8E"); // stx
+    run_tests("8C"); // sty
 
     // Zero Page
-    run_tests("65");
-    run_tests("25");
-    run_tests("06");
-    run_tests("24");
-    run_tests("C5");
-    run_tests("E4");
-    run_tests("C4");
-    run_tests("C6");
-    run_tests("45");
-    run_tests("E6");
-    run_tests("A5");
-    run_tests("A6");
-    run_tests("A4");
-    run_tests("46");
-    run_tests("05");
-    run_tests("26");
-    run_tests("66");
-    run_tests("E5");
-    run_tests("85");
-    run_tests("86");
-    run_tests("84");
+    run_tests("65"); // adc
+    run_tests("25"); // and
+    run_tests("06"); // asl
+    run_tests("24"); // bit
+    run_tests("C5"); // cmp
+    run_tests("E4"); // cpx
+    run_tests("C4"); // cpy
+    run_tests("C6"); // dec
+    run_tests("45"); // eor
+    run_tests("E6"); // inc
+    run_tests("A5"); // lda
+    run_tests("A6"); // ldx
+    run_tests("A4"); // ldy
+    run_tests("46"); // lsr
+    run_tests("05"); // ora
+    run_tests("26"); // rol
+    run_tests("66"); // ror
+    run_tests("E5"); // sbc
+    run_tests("85"); // sta
+    run_tests("86"); // stx
+    run_tests("84"); // sty
 
+    // Relative
     run_tests("90"); // bcc
     run_tests("B0"); // bcs
     run_tests("F0"); // beq
