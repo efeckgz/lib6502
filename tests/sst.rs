@@ -44,6 +44,12 @@ fn sst() {
     run_tests("09"); // ora
     run_tests("E9"); // sbc
 
+    // Accumulator
+    run_tests("0A"); // asl
+    run_tests("4A"); // lsr
+    run_tests("2A"); // rol
+    run_tests("6A"); // ror
+
     // Absolute
     run_tests("6D"); // adc
     run_tests("2D"); // and
