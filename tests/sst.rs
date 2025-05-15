@@ -4,11 +4,6 @@ use framework::run_tests;
 
 #[test]
 fn sst() {
-    // lda
-    run_tests("A9");
-    run_tests("A5");
-    run_tests("AD");
-
     // implied 2 cycle
     run_tests("18");
     run_tests("D8");
@@ -37,6 +32,19 @@ fn sst() {
     run_tests("28");
     run_tests("40");
     run_tests("60");
+
+    // Immediate
+    run_tests("69");
+    run_tests("29");
+    run_tests("C9");
+    run_tests("E0");
+    run_tests("C0");
+    run_tests("49");
+    run_tests("A9");
+    run_tests("A2");
+    run_tests("A0");
+    run_tests("09");
+    run_tests("E9");
 
     // Absolute
     run_tests("6D");

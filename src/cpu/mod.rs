@@ -467,7 +467,10 @@ impl<'a> Cpu<'a> {
             Nmeonic::LDX => self.ldx(),
             Nmeonic::LDY => self.ldy(),
             Nmeonic::ORA => self.ora(),
-
+            Nmeonic::SBC => {
+                self.latch_u8 ^= 0xFF;
+                self.adc();
+            }
             _ => panic!("Unrecognized opcode-addressing mode-nmeonic combination!"),
         }
 
