@@ -120,6 +120,7 @@ pub enum Flags {
     Negative = 7,
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy)]
 enum Vectors {
     NmiLo = 0xFFFA,
