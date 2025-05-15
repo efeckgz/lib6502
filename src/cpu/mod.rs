@@ -65,7 +65,7 @@ enum State {
     FetchFirstVec(Vectors), // The fields here hold the vector to fetch
     FetchSecondVec(Vectors),
 
-    DummyReadPc, // Read on current pc val, dont increment pc and discard result
+    DummyReadPc(bool), // Read on current pc val, dont increment pc and discard result
 
     FetchOpcode(bool), // Fetch opcode state. Every instruction starts here.
 
@@ -193,7 +193,7 @@ impl<'a> Cpu<'a> {
             State::FetchFirstVec(vector) => self.fetch_first_vec(vector),
             State::FetchSecondVec(vector) => self.fetch_second_vec(vector),
             State::FetchOpcode(from_branch) => self.fetch_opcode(from_branch),
-            State::DummyReadPc => self.dummy_read_pc(),
+            State::DummyReadPc(rts_t5) => self.dummy_read_pc(rts_t5),
             State::ExecImpl => self.exec_impl(),
             State::ExecImm => self.exec_imm(),
             State::ExecAcc => self.exec_acc(),
@@ -299,7 +299,9 @@ impl<'a> Cpu<'a> {
         self.state = State::FetchOpcode(NOT_FROM_BRANCH);
     }
 
-    fn dummy_read_pc(&mut self) {
+    // RTS instruction makes two dummy pc reads, 1 after fetching the opcode and 1 more after pulling the pc from stack.
+    // The second read happens on the sixth cycle, pc pulled from stack is incremented. rts_t5 flag checks this situation.
+    fn dummy_read_pc(&mut self, rts_t5: bool) {
         self.addr = self.pc;
         self.read = true;
         self.access_bus();
@@ -307,8 +309,14 @@ impl<'a> Cpu<'a> {
         // May adjust later to accomodate more states
         match self.cur_nmeonic {
             Nmeonic::PHP | Nmeonic::PHA => self.state = State::ImplPush,
-            Nmeonic::PLP | Nmeonic::PLA | Nmeonic::RTI | Nmeonic::RTS => {
-                self.state = State::ReadIncS
+            Nmeonic::PLP | Nmeonic::PLA | Nmeonic::RTI => self.state = State::ReadIncS,
+            Nmeonic::RTS => {
+                self.state = if rts_t5 {
+                    self.pc = self.pc.wrapping_add(1);
+                    State::FetchOpcode(NOT_FROM_BRANCH)
+                } else {
+                    State::ReadIncS
+                };
             }
             Nmeonic::BRK => {
                 // Look here if there is a pc related issue
@@ -322,16 +330,9 @@ impl<'a> Cpu<'a> {
     // Boolean parameter from_branch indicates the microprocessor should check status flags to see if there is a branch to be taken.
     // It is set to true if the state machine transitions from FetchOffset to FetchOpcode.
     fn fetch_opcode(&mut self, from_branch: bool) {
-        println!(
-            "Addressing mode and nmeonic before this fetch: {:?} {:?}",
-            self.cur_mode, self.cur_nmeonic
-        );
-
         self.addr = self.pc;
         self.read = true;
         self.access_bus();
-
-        println!("Fetched opcode: {:#04X}", self.data);
 
         // Branch is taken if the flags are set accordingly and we are decoding a branch
         let branch_taken = match self.cur_nmeonic {
@@ -397,15 +398,15 @@ impl<'a> Cpu<'a> {
 
                 // These instructions are stack operations and require more than 2 cycles.
                 Nmeonic::PHA | Nmeonic::PHP | Nmeonic::PLA | Nmeonic::PLP | Nmeonic::RTS => {
-                    self.state = State::DummyReadPc
+                    self.state = State::DummyReadPc(false)
                 }
 
                 Nmeonic::BRK => {
                     // self.set_flag(Flags::Break, true); // Set the Break flag
                     // self.brk();
-                    self.state = State::DummyReadPc;
+                    self.state = State::DummyReadPc(false);
                 }
-                Nmeonic::RTI => self.state = State::DummyReadPc,
+                Nmeonic::RTI => self.state = State::DummyReadPc(false),
                 _ => panic!("Unrecognized nmeonic for implied mode instruction"),
             },
             AddressingMode::Accumulator => self.state = State::ExecAcc,
@@ -413,7 +414,7 @@ impl<'a> Cpu<'a> {
             AddressingMode::Absolute => self.state = State::FetchAbsLo,
             AddressingMode::ZeroPage => self.state = State::FetchZP,
             AddressingMode::Relative => self.state = State::FetchOffset,
-            _ => println!("{:?}, {:?}", self.cur_mode, self.cur_nmeonic),
+            _ => todo!("{:?}, {:?}", self.cur_mode, self.cur_nmeonic),
         }
     }
 
@@ -855,7 +856,11 @@ impl<'a> Cpu<'a> {
 
         self.pc = (hi << 8) | lo;
 
-        self.state = State::FetchOpcode(NOT_FROM_BRANCH);
+        if let Nmeonic::RTS = self.cur_nmeonic {
+            self.state = State::DummyReadPc(true);
+        } else {
+            self.state = State::FetchOpcode(NOT_FROM_BRANCH);
+        }
     }
 
     fn pull_pcl(&mut self) {

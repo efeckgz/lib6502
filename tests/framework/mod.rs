@@ -41,7 +41,7 @@ fn run_single_test(t: Test) {
         assert_eq!(cpu_addr, *addr);
         assert_eq!(cpu_data, *data);
         assert_eq!(cpu_rw, read);
-        println!("Cycle {} works!", i);
+        // println!("Cycle {} works!", i);
         i += 1;
     }
 
