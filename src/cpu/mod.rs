@@ -266,12 +266,8 @@ impl<'a> Cpu<'a> {
     }
 
     fn fetch_first_vec(&mut self, vector: Vectors) {
-        // BRK sets the break flag, then clears it and sets the interrupt disable flag
-        // if self.flag_set(Flags::Break) {
-        //     self.set_flag(Flags::Break, false);
-        //     self.set_flag(Flags::InterrputDisable, true);
-        // }
-
+        // Brk instruction sets the I flag after pulling the status register from stack.
+        // It is unclear exactly on which cycle this happens, and to my knowledge it doesn't matter anyway.
         if let Nmeonic::BRK = self.cur_nmeonic {
             self.set_flag(Flags::InterrputDisable, true);
         }
@@ -653,7 +649,6 @@ impl<'a> Cpu<'a> {
                 self.read = true;
                 self.access_bus();
                 self.latch_u8 = self.data ^ 0xFF;
-                // self.sbc()
                 self.adc();
             }
             // Store instruction functions perform their bus operations.
@@ -673,7 +668,6 @@ impl<'a> Cpu<'a> {
         self.latch_u8 = self.data;
 
         self.pc = self.pc.wrapping_add(1);
-        // self.state = State::ExecZP;
         match self.cur_nmeonic {
             Nmeonic::ASL
             | Nmeonic::DEC
@@ -828,12 +822,10 @@ impl<'a> Cpu<'a> {
 
     fn push_pch(&mut self) {
         self.addr = STACK_BASE + self.s as u16;
-        // self.data = ((self.pc & 0xFF00) >> 7) as u8;
         self.data = (self.pc >> 8) as u8;
         self.read = false;
         self.access_bus();
         self.s = self.s.wrapping_sub(1);
-        // self.push_stack(((self.pc & 0xFF00) >> 7) as u8);
         self.state = State::PushPcL;
     }
 
@@ -843,7 +835,6 @@ impl<'a> Cpu<'a> {
         self.read = false;
         self.access_bus();
         self.s = self.s.wrapping_sub(1);
-        // self.push_stack((self.pc & 0xFF) as u8);
 
         if let Nmeonic::BRK = self.cur_nmeonic {
             self.state = State::PushP;
@@ -857,7 +848,6 @@ impl<'a> Cpu<'a> {
         self.addr = STACK_BASE + self.s as u16;
         self.read = true;
         self.access_bus(); // Program counter hi in data bus
-        // self.s = self.s.wrapping_add(1);
         let hi = self.data as u16;
 
         self.pc = (hi << 8) | lo;
@@ -935,34 +925,7 @@ impl<'a> Cpu<'a> {
         // Currently does not handle bcd mode addition.
         let a_prev = self.a;
         let val = self.latch_u8;
-        // if self.flag_set(Flags::Decimal) {
-        //     // let mut res = a_prev + val;
-        //     let mut res = a_prev.wrapping_add(val);
-        //     if self.flag_set(Flags::Carry) {
-        //         res = res.wrapping_add(1);
-        //     }
 
-        //     let mut carry = false;
-        //     if (res & 0x0F) > 9 {
-        //         res = res.wrapping_add(0x06);
-        //     }
-
-        //     // Set the N and V flags before decimal correcting the high nibble
-        //     self.set_flag(Flags::Negative, (res & 0x80) != 0);
-        //     self.set_flag(Flags::Overflow, ((a_prev ^ res) & (val ^ res) & 0x80) != 0);
-
-        //     if res > 0x99 {
-        //         res = res.wrapping_add(0x60);
-        //         carry = true;
-        //     }
-
-        //     self.a = res;
-
-        //     self.set_flag(Flags::Carry, carry);
-        //     self.set_flag(Flags::Zero, res == 0);
-
-        // (res, carry)
-        // } else {
         let (mut res, mut of) = a_prev.overflowing_add(val);
         if self.flag_set(Flags::Carry) {
             let (fin, of2) = res.overflowing_add(1);
@@ -976,7 +939,6 @@ impl<'a> Cpu<'a> {
         self.set_flag(Flags::Zero, res == 0);
         self.set_flag(Flags::Negative, (res & 0x80) != 0);
         self.set_flag(Flags::Overflow, ((a_prev ^ res) & (val ^ res) & 0x80) != 0); // (res, of)
-        // }
     }
 
     fn and(&mut self) {
@@ -1045,11 +1007,6 @@ impl<'a> Cpu<'a> {
 
     fn bpl(&mut self) -> bool {
         !self.flag_set(Flags::Negative)
-    }
-
-    fn brk(&mut self) {
-        // Set the break flag in the status register before pushing it to stack
-        self.set_flag(Flags::InterrputDisable, true);
     }
 
     fn bvc(&mut self) -> bool {
@@ -1215,7 +1172,7 @@ impl<'a> Cpu<'a> {
     }
 
     fn nop(&mut self) {
-        // No operation
+        // No operation.
         return;
     }
 
@@ -1340,46 +1297,7 @@ impl<'a> Cpu<'a> {
         self.read = true;
         self.access_bus(); // P register in data bus
         self.s = self.s.wrapping_add(1);
-        // self.p = self.data;
         self.p = (self.data & 0xCF) | 0x20;
-    }
-
-    fn rts(&mut self) {
-        unimplemented!();
-    }
-
-    fn sbc(&mut self) {
-        // self.data ^= 0xFF;
-        // self.adc();
-
-        // let a_prev = self.a;
-        // let val = self.data;
-
-        // let (mut result, mut overflow) = self.a.overflowing_sub(val);
-        // println!("Result, overflow before carry: {}, {}", result, overflow);
-        // if !self.flag_set(Flags::Carry) {
-        //     let (result_fixed, overflow_fixed) = result.overflowing_sub(1);
-        //     println!(
-        //         "Result, overflow after carry: {}, {}",
-        //         result_fixed, overflow_fixed
-        //     );
-
-        //     result = result_fixed;
-        //     overflow = overflow || overflow_fixed;
-        //     println!("Result, overflow final: {}, {}", result, overflow);
-        // }
-
-        // self.a = result;
-
-        // // Set the carry flag the inverse of borrow, passes some fails some.
-        // // self.set_flag(Flags::Carry, !overflow);
-        // self.set_flag(Flags::Carry, (self.a & 0x80) == 0);
-        // self.set_flag(Flags::Zero, self.a == 0);
-        // self.set_flag(
-        //     Flags::Overflow,
-        //     ((a_prev ^ result) & (val ^ result) & 0x80) != 0,
-        // );
-        // self.set_flag(Flags::Negative, (self.a as i8) < 0);
     }
 
     fn sec(&mut self) {
