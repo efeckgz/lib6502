@@ -480,7 +480,10 @@ impl<'a> Cpu<'a> {
     fn exec_acc(&mut self) {
         // Perform a dummy bus access. No actual value is read from or written to the bus.
         // But the 6502 performs a bus access at each cycle - even if it is useless.
+        self.addr = self.pc;
+        self.read = true;
         self.access_bus();
+
         match self.cur_nmeonic {
             // Boolean parameter is_accumulator passed true for accumulator addressing mode
             Nmeonic::ASL => self.asl(),
