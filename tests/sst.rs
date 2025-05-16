@@ -75,9 +75,6 @@ fn sst() {
     run_tests("8E"); // stx
     run_tests("8C"); // sty
 
-    // run_tests("1E");
-    // run_tests("9D");
-
     // Absolute X
     run_tests("7D"); // adc
     run_tests("3D"); // and
