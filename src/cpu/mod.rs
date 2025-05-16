@@ -80,8 +80,8 @@ enum State {
     ImplPull, // Pull from stack implied mode
 
     // Absolute mode states
-    FetchAbsLo,
-    FetchAbsHi,
+    FetchAbsLo(IndexReg),
+    FetchAbsHi(IndexReg),
     ExecAbs,
 
     // Zero page states
@@ -129,6 +129,13 @@ enum Vectors {
     ResHi = 0xFFFD,
     BrkLo = 0xFFFE,
     BrkHi = 0xFFFF,
+}
+
+#[derive(Clone, Copy)]
+enum IndexReg {
+    None,
+    X,
+    Y,
 }
 
 impl<'a> Cpu<'a> {
@@ -201,8 +208,8 @@ impl<'a> Cpu<'a> {
             State::ImplPush => self.impl_push(),
             State::ReadIncS => self.read_inc_s(),
             State::ImplPull => self.impl_pull(),
-            State::FetchAbsLo => self.fetch_abs_lo(),
-            State::FetchAbsHi => self.fetch_abs_hi(),
+            State::FetchAbsLo(index_reg) => self.fetch_abs_lo(index_reg),
+            State::FetchAbsHi(index_reg) => self.fetch_abs_hi(index_reg),
             State::ExecAbs => self.exec_abs(),
             State::FetchZP => self.fetch_zp(),
             State::ExecZP => self.exec_zp(),
@@ -408,7 +415,9 @@ impl<'a> Cpu<'a> {
             },
             AddressingMode::Accumulator => self.state = State::ExecAcc,
             AddressingMode::Immediate => self.state = State::ExecImm,
-            AddressingMode::Absolute => self.state = State::FetchAbsLo,
+            AddressingMode::Absolute => self.state = State::FetchAbsLo(IndexReg::None),
+            AddressingMode::AbsoluteX => self.state = State::FetchAbsLo(IndexReg::X),
+            AddressingMode::AbsoluteY => self.state = State::FetchAbsLo(IndexReg::Y),
             AddressingMode::ZeroPage => self.state = State::FetchZP,
             AddressingMode::Relative => self.state = State::FetchOffset,
             _ => todo!("{:?}, {:?}", self.cur_mode, self.cur_nmeonic),
@@ -529,7 +538,7 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    fn fetch_abs_lo(&mut self) {
+    fn fetch_abs_lo(&mut self, index_reg: IndexReg) {
         // Fetch the low byte of the effective address
         self.addr = self.pc;
         self.read = true;
@@ -539,11 +548,11 @@ impl<'a> Cpu<'a> {
 
         match self.cur_nmeonic {
             Nmeonic::JSR => self.state = State::JsrDummyStack,
-            _ => self.state = State::FetchAbsHi,
+            _ => self.state = State::FetchAbsHi(IndexReg::None),
         }
     }
 
-    fn fetch_abs_hi(&mut self) {
+    fn fetch_abs_hi(&mut self, index_reg: IndexReg) {
         // Fetch the high byte of the effective address
         let lo = self.latch_u8 as u16; // Data bus contains the least significant byte fetched in the previous cycle
         self.addr = self.pc;
@@ -840,7 +849,7 @@ impl<'a> Cpu<'a> {
         if let Nmeonic::BRK = self.cur_nmeonic {
             self.state = State::PushP;
         } else {
-            self.state = State::FetchAbsHi;
+            self.state = State::FetchAbsHi(IndexReg::None);
         }
     }
 
