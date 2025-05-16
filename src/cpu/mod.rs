@@ -616,7 +616,14 @@ impl<'a> Cpu<'a> {
                     self.state = State::IndexedStoreExtra(boundary_crossed);
                 }
             }
-            _ => self.state = State::ExecAbs,
+            _ => {
+                if boundary_crossed {
+                    self.state = State::PageCrossed(true); // Pass true to go page up.
+                } else {
+                    self.state = State::ExecAbs;
+                }
+                // self.state = State::ExecAbs
+            }
         }
     }
 
@@ -961,13 +968,19 @@ impl<'a> Cpu<'a> {
         self.addr = self.latch_u16;
         self.read = true;
         self.access_bus();
-        self.pc = if page_up {
+
+        self.latch_u16 = if page_up {
             self.latch_u16.wrapping_add(0x0100)
         } else {
             self.latch_u16.wrapping_sub(0x0100)
         };
 
-        self.state = State::FetchOpcode(NOT_FROM_BRANCH);
+        if let AddressingMode::Relative = self.cur_mode {
+            self.pc = self.latch_u16;
+            self.state = State::FetchOpcode(NOT_FROM_BRANCH);
+        } else {
+            self.state = State::ExecAbs; // This will surely change
+        }
     }
 
     fn access_bus(&mut self) {

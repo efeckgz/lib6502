@@ -75,8 +75,25 @@ fn sst() {
     run_tests("8E"); // stx
     run_tests("8C"); // sty
 
-    run_tests("1E");
-    run_tests("9D");
+    // run_tests("1E");
+    // run_tests("9D");
+
+    // Absolute X
+    run_tests("7D"); // adc
+    run_tests("3D"); // and
+    run_tests("1E"); // asl
+    run_tests("DD"); // cmp
+    run_tests("DE"); // dec
+    run_tests("5D"); // eor
+    run_tests("FE"); // inc
+    run_tests("BD"); // lda
+    run_tests("BC"); // ldy
+    run_tests("5E"); // lsr
+    run_tests("1D"); // ora
+    run_tests("3E"); // rol
+    run_tests("7E"); // ror
+    run_tests("FD"); // sbc
+    run_tests("9D"); // sta
 
     // Zero Page
     run_tests("65"); // adc
