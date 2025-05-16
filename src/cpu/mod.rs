@@ -87,7 +87,7 @@ enum State {
     ExecAbs,
 
     // Zero page states
-    FetchZP,
+    FetchZP(IndexReg),
     ExecZP,
 
     // Read-Modify-Write states
@@ -217,7 +217,7 @@ impl<'a> Cpu<'a> {
                 self.indexed_store_extra(boundary_crossed)
             }
             State::ExecAbs => self.exec_abs(),
-            State::FetchZP => self.fetch_zp(),
+            State::FetchZP(index_reg) => self.fetch_zp(index_reg),
             State::ExecZP => self.exec_zp(),
             State::RmwIndexedExtra(boundary_crossed) => self.rmw_indexed_extra(boundary_crossed),
             State::RmwRead => self.rmw_read(),
@@ -423,7 +423,7 @@ impl<'a> Cpu<'a> {
             AddressingMode::Absolute => self.state = State::FetchAbsLo(IndexReg::None),
             AddressingMode::AbsoluteX => self.state = State::FetchAbsLo(IndexReg::X),
             AddressingMode::AbsoluteY => self.state = State::FetchAbsLo(IndexReg::Y),
-            AddressingMode::ZeroPage => self.state = State::FetchZP,
+            AddressingMode::ZeroPage => self.state = State::FetchZP(IndexReg::None),
             AddressingMode::Relative => self.state = State::FetchOffset,
             _ => todo!("{:?}, {:?}", self.cur_mode, self.cur_nmeonic),
         }
@@ -558,9 +558,6 @@ impl<'a> Cpu<'a> {
     }
 
     fn fetch_abs_hi(&mut self, index_reg: IndexReg) {
-        // Fetch the high byte of the effective address
-        // let lo = self.latch_u8 as u16; // Data bus contains the least significant byte fetched in the previous cycle
-
         // Determine the index register to add, or add 0 for non-indexed.
         let ir = match index_reg {
             IndexReg::X => self.x,
@@ -568,16 +565,13 @@ impl<'a> Cpu<'a> {
             IndexReg::None => 0,
         };
 
+        // Fetch the high byte of the effective address
         self.addr = self.pc;
         self.read = true;
         self.access_bus();
         self.pc = self.pc.wrapping_add(1);
 
         let (lo, boundary_crossed) = self.latch_u8.overflowing_add(ir);
-        // if boundary_crossed {
-        //     todo!("Page boundary crossing in Indexed absolute mode");
-        // }
-
         let hi = self.data as u16;
         self.latch_u16 = (hi << 8) | (lo as u16);
 
@@ -607,7 +601,6 @@ impl<'a> Cpu<'a> {
                 } else {
                     self.state = State::RmwIndexedExtra(boundary_crossed)
                 }
-                // self.state = State::RmwRead
             }
             Nmeonic::STA | Nmeonic::STX | Nmeonic::STY => {
                 if let IndexReg::None = index_reg {
@@ -617,12 +610,11 @@ impl<'a> Cpu<'a> {
                 }
             }
             _ => {
-                if boundary_crossed {
-                    self.state = State::PageCrossed(true); // Pass true to go page up.
+                self.state = if boundary_crossed {
+                    State::PageCrossed(true) // Pass true to go page up
                 } else {
-                    self.state = State::ExecAbs;
-                }
-                // self.state = State::ExecAbs
+                    State::ExecAbs
+                };
             }
         }
     }
@@ -725,7 +717,7 @@ impl<'a> Cpu<'a> {
         self.state = State::FetchOpcode(NOT_FROM_BRANCH);
     }
 
-    fn fetch_zp(&mut self) {
+    fn fetch_zp(&mut self, index_reg: IndexReg) {
         self.addr = self.pc;
         self.read = true;
         self.access_bus();
