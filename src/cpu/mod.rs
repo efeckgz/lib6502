@@ -406,8 +406,6 @@ impl<'a> Cpu<'a> {
                 }
 
                 Nmeonic::BRK => {
-                    // self.set_flag(Flags::Break, true); // Set the Break flag
-                    // self.brk();
                     self.state = State::DummyReadPc(false);
                 }
                 Nmeonic::RTI => self.state = State::DummyReadPc(false),
@@ -548,19 +546,33 @@ impl<'a> Cpu<'a> {
 
         match self.cur_nmeonic {
             Nmeonic::JSR => self.state = State::JsrDummyStack,
-            _ => self.state = State::FetchAbsHi(IndexReg::None),
+            _ => self.state = State::FetchAbsHi(index_reg),
         }
     }
 
     fn fetch_abs_hi(&mut self, index_reg: IndexReg) {
         // Fetch the high byte of the effective address
-        let lo = self.latch_u8 as u16; // Data bus contains the least significant byte fetched in the previous cycle
+        // let lo = self.latch_u8 as u16; // Data bus contains the least significant byte fetched in the previous cycle
+
+        // Determine the index register to add, or add 0 for non-indexed.
+        let ir = match index_reg {
+            IndexReg::X => self.x,
+            IndexReg::Y => self.y,
+            IndexReg::None => 0,
+        };
+
         self.addr = self.pc;
         self.read = true;
         self.access_bus();
         self.pc = self.pc.wrapping_add(1);
+
+        let (lo, boundary_crossed) = self.latch_u8.overflowing_add(ir);
+        if boundary_crossed {
+            todo!("Page boundary crossing in Indexed absolute mode");
+        }
+
         let hi = self.data as u16;
-        self.latch_u16 = (hi << 8) | lo;
+        self.latch_u16 = (hi << 8) | (lo as u16);
 
         match self.cur_nmeonic {
             Nmeonic::JMP => {
