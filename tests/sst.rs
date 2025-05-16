@@ -158,6 +158,9 @@ fn sst() {
     run_tests("E1"); // sbc
     run_tests("81"); // sta
 
+    // Indirect Y
+    run_tests("91"); // sta
+
     // Relative
     run_tests("90"); // bcc
     run_tests("B0"); // bcs
