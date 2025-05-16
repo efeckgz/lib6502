@@ -148,6 +148,9 @@ fn sst() {
     run_tests("B6"); // ldx
     run_tests("96"); // stx
 
+    // Indirect
+    run_tests("6C"); // jmp
+
     // Indirect X
     run_tests("61"); // adc
     run_tests("21"); // and

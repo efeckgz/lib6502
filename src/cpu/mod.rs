@@ -97,6 +97,10 @@ enum State {
     PullPcH,
     PullPcL,
 
+    JmpFetchIAH, // Fetch indirect addr hi for jump indirect
+    JmpFetchADL,
+    JmpFetchADH,
+
     PushP, // Push processor status register to the stack
 
     FetchOffset, // Fetch relative branch offset
@@ -213,6 +217,9 @@ impl<'a> Cpu<'a> {
             State::PushPcL => self.push_pcl(),
             State::PullPcH => self.pull_pch(),
             State::PullPcL => self.pull_pcl(),
+            State::JmpFetchIAH => self.jmp_fetch_iah(),
+            State::JmpFetchADL => self.jmp_fetch_adl(),
+            State::JmpFetchADH => self.jmp_fetch_adh(),
             State::PushP => self.push_p(),
             State::FetchOffset => self.fetch_offset(),
             State::IndirectAddX => self.indirect_add_x(),
@@ -722,7 +729,8 @@ impl<'a> Cpu<'a> {
             match ir {
                 IndexReg::X => self.state = State::IndirectAddX,
                 IndexReg::Y => self.state = State::IndirectYFetchBAL,
-                _ => todo!("Complete whatever this will be"),
+                IndexReg::None => self.state = State::JmpFetchIAH,
+                // _ => todo!("Complete whatever this will be"),
             }
             return;
         }
@@ -965,6 +973,49 @@ impl<'a> Cpu<'a> {
         self.s = self.s.wrapping_add(1);
         self.latch_u8 = self.data;
         self.state = State::PullPcH;
+    }
+
+    fn jmp_fetch_iah(&mut self) {
+        self.addr = self.pc;
+        self.read = true;
+        self.access_bus(); // hi in self.data
+
+        self.pc = self.pc.wrapping_add(1);
+
+        let lo = self.latch_u8 as u16;
+        let hi = self.data as u16;
+        self.latch_u16 = (hi << 8) | lo;
+
+        self.state = State::JmpFetchADL;
+    }
+
+    fn jmp_fetch_adl(&mut self) {
+        self.addr = self.latch_u16;
+        self.read = true;
+        self.access_bus(); // adl in self.data
+
+        let hi = self.latch_u16 & 0xFF00;
+        let mut lo = (self.latch_u16 & 0x00FF) as u8;
+
+        lo = lo.wrapping_add(1);
+        self.latch_u16 = hi | (lo as u16);
+
+        self.latch_u8 = self.data; // adl in self.latch_u8
+        self.state = State::JmpFetchADH;
+    }
+
+    fn jmp_fetch_adh(&mut self) {
+        self.addr = self.latch_u16;
+        self.read = true;
+        self.access_bus(); // adh in self.data
+
+        let lo = self.latch_u8 as u16;
+        let hi = self.data as u16;
+        self.latch_u16 = (hi << 8) | lo;
+
+        // self.state = State::ExecAbs;
+        self.pc = self.latch_u16;
+        self.state = State::FetchOpcode(NOT_FROM_BRANCH);
     }
 
     fn push_p(&mut self) {
