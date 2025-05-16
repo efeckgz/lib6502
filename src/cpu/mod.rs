@@ -621,13 +621,13 @@ impl<'a> Cpu<'a> {
     }
 
     fn indexed_store_extra(&mut self, boundary_crossed: bool) {
-        if boundary_crossed {
-            self.latch_u16 = self.latch_u16.wrapping_add(0x0100);
-        }
-
         self.addr = self.latch_u16;
         self.read = true;
         self.access_bus();
+
+        if boundary_crossed {
+            self.latch_u16 = self.latch_u16.wrapping_add(0x0100);
+        }
 
         self.state = State::ExecAbs; // Only store instructions will run in the match arm for exec_abs
     }
