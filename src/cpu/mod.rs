@@ -89,6 +89,7 @@ enum State {
     // Zero page states
     FetchZP(IndexReg),
     ExecZP,
+    IndexedZPDummy(IndexReg), // Dummy read on base zp address
 
     // Read-Modify-Write states
     RmwIndexedExtra(bool), // Read from ea. Correct Hi byte if overflow on adding index register to ea.
@@ -219,6 +220,7 @@ impl<'a> Cpu<'a> {
             State::ExecAbs => self.exec_abs(),
             State::FetchZP(index_reg) => self.fetch_zp(index_reg),
             State::ExecZP => self.exec_zp(),
+            State::IndexedZPDummy(index_reg) => self.indexed_zp_dummy(index_reg),
             State::RmwIndexedExtra(boundary_crossed) => self.rmw_indexed_extra(boundary_crossed),
             State::RmwRead => self.rmw_read(),
             State::RmwDummyWrite => self.rmw_dummy_write(),
@@ -424,6 +426,8 @@ impl<'a> Cpu<'a> {
             AddressingMode::AbsoluteX => self.state = State::FetchAbsLo(IndexReg::X),
             AddressingMode::AbsoluteY => self.state = State::FetchAbsLo(IndexReg::Y),
             AddressingMode::ZeroPage => self.state = State::FetchZP(IndexReg::None),
+            AddressingMode::ZeroPageX => self.state = State::FetchZP(IndexReg::X),
+            AddressingMode::ZeroPageY => self.state = State::FetchZP(IndexReg::Y),
             AddressingMode::Relative => self.state = State::FetchOffset,
             _ => todo!("{:?}, {:?}", self.cur_mode, self.cur_nmeonic),
         }
@@ -721,7 +725,9 @@ impl<'a> Cpu<'a> {
         self.addr = self.pc;
         self.read = true;
         self.access_bus();
+
         self.latch_u8 = self.data;
+        self.latch_u16 = self.data as u16;
 
         self.pc = self.pc.wrapping_add(1);
         match self.cur_nmeonic {
@@ -731,106 +737,147 @@ impl<'a> Cpu<'a> {
             | Nmeonic::LSR
             | Nmeonic::ROL
             | Nmeonic::ROR => {
-                self.latch_u16 = self.latch_u8 as u16;
-                self.state = State::RmwRead;
+                // self.latch_u16 = self.latch_u8 as u16;
+                if let IndexReg::None = index_reg {
+                    self.state = State::RmwRead;
+                } else {
+                    // todo!("Indexed Zero Page RMW instructions")
+                    self.state = State::IndexedZPDummy(index_reg)
+                }
+                // self.state = State::RmwRead;
             }
-            _ => self.state = State::ExecZP,
+            _ => {
+                if let IndexReg::None = index_reg {
+                    self.state = State::ExecZP;
+                } else {
+                    self.state = State::IndexedZPDummy(index_reg)
+                }
+                // self.state = State::ExecZP
+            }
         }
     }
 
     fn exec_zp(&mut self) {
         match self.cur_nmeonic {
             Nmeonic::STA => {
-                self.latch_u16 = self.latch_u8 as u16;
+                // self.latch_u16 = self.latch_u8 as u16;
                 self.sta();
             }
             Nmeonic::STX => {
-                self.latch_u16 = self.latch_u8 as u16;
+                // self.latch_u16 = self.latch_u8 as u16;
                 self.stx();
             }
             Nmeonic::STY => {
-                self.latch_u16 = self.latch_u8 as u16;
+                // self.latch_u16 = self.latch_u8 as u16;
                 self.sty();
             }
             Nmeonic::ADC => {
-                self.addr = self.latch_u8 as u16;
+                self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.latch_u8 = self.data;
                 self.adc()
             }
             Nmeonic::AND => {
-                self.addr = self.latch_u8 as u16;
+                self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.and()
             }
             Nmeonic::BIT => {
-                self.addr = self.latch_u8 as u16;
+                self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.bit()
             }
             Nmeonic::CMP => {
-                self.addr = self.latch_u8 as u16;
+                self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.cmp()
             }
             Nmeonic::CPX => {
-                self.addr = self.latch_u8 as u16;
+                self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.cpx()
             }
             Nmeonic::CPY => {
-                self.addr = self.latch_u8 as u16;
+                self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.cpy()
             }
             Nmeonic::EOR => {
-                self.addr = self.latch_u8 as u16;
+                self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.eor()
             }
             Nmeonic::LDA => {
-                self.addr = self.latch_u8 as u16;
+                self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.lda()
             }
             Nmeonic::LDX => {
-                self.addr = self.latch_u8 as u16;
+                self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.ldx()
             }
             Nmeonic::LDY => {
-                self.addr = self.latch_u8 as u16;
+                self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.ldy()
             }
             Nmeonic::ORA => {
-                self.addr = self.latch_u8 as u16;
+                self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.ora()
             }
             Nmeonic::SBC => {
-                self.addr = self.latch_u8 as u16;
+                self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.latch_u8 = self.data ^ 0xFF;
                 self.adc();
-                // self.sbc()
             }
             _ => todo!("Remaining zero page mode instructions"),
         }
 
         self.state = State::FetchOpcode(NOT_FROM_BRANCH);
+    }
+
+    fn indexed_zp_dummy(&mut self, index_reg: IndexReg) {
+        self.addr = self.latch_u16;
+        self.read = true;
+        self.access_bus();
+
+        let irval = match index_reg {
+            IndexReg::X => self.x,
+            IndexReg::Y => self.y,
+            IndexReg::None => 0,
+        };
+
+        // Address always stays in page zero.
+        // self.latch_u16 = self.latch_u16.wrapping_add(irval as u16);
+        self.latch_u8 = self.latch_u8.wrapping_add(irval);
+        self.latch_u16 = self.latch_u8 as u16;
+
+        self.state = match self.cur_nmeonic {
+            Nmeonic::ASL
+            | Nmeonic::DEC
+            | Nmeonic::INC
+            | Nmeonic::LSR
+            | Nmeonic::ROL
+            | Nmeonic::ROR => State::RmwRead,
+            _ => State::ExecZP,
+        };
+
+        // self.state = State::ExecZP;
     }
 
     fn rmw_indexed_extra(&mut self, boundary_crossed: bool) {

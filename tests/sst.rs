@@ -93,15 +93,15 @@ fn sst() {
     run_tests("9D"); // sta
 
     // Absolute Y
-    run_tests("79");
-    run_tests("39");
-    run_tests("D9");
-    run_tests("59");
-    run_tests("B9");
-    run_tests("BE");
-    run_tests("19");
-    run_tests("F9");
-    run_tests("99");
+    run_tests("79"); // adc
+    run_tests("39"); // and
+    run_tests("D9"); // cmp
+    run_tests("59"); // eor
+    run_tests("B9"); // lda
+    run_tests("BE"); // ldx
+    run_tests("19"); // ora
+    run_tests("F9"); // sbc
+    run_tests("99"); // sta
 
     // Zero Page
     run_tests("65"); // adc
@@ -125,6 +125,28 @@ fn sst() {
     run_tests("85"); // sta
     run_tests("86"); // stx
     run_tests("84"); // sty
+
+    // Zero Page X
+    run_tests("75"); // adc
+    run_tests("35"); // and
+    run_tests("16"); // asl
+    run_tests("D5"); // cmp
+    run_tests("D6"); // dec
+    run_tests("55"); // eor
+    run_tests("F6"); // inc
+    run_tests("B5"); // lda
+    run_tests("B4"); // ldy
+    run_tests("56"); // lsr
+    run_tests("15"); // ora
+    run_tests("36"); // rol
+    run_tests("76"); // ror
+    run_tests("F5"); // sbc
+    run_tests("95"); // sta
+    run_tests("94"); // sty
+
+    // Zero Page Y
+    run_tests("B6"); // ldx
+    run_tests("96"); // stx
 
     // Relative
     run_tests("90"); // bcc
