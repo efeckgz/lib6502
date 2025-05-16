@@ -1,7 +1,7 @@
 mod lookup;
 
 use crate::bus::BusDevice;
-use lookup::{LOOKUP, Nmeonic};
+use lookup::{AddressingMode, IndexReg, LOOKUP, Nmeonic};
 
 const STACK_BASE: u16 = 0x0100;
 
@@ -33,22 +33,15 @@ pub struct Cpu<'a> {
     latch_u16: u16,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum AddressingMode {
-    None,
-    Accumulator,
-    Relative,
-    Implied,
-    Indirect,
-    Immediate,
-    ZeroPage,
-    ZeroPageX,
-    ZeroPageY,
-    Absolute,
-    AbsoluteX,
-    AbsoluteY,
-    IndirectX,
-    IndirectY,
+// Status flags. Used in the processor status register p.
+pub enum Flags {
+    Carry = 0,
+    Zero = 1,
+    InterrputDisable = 2,
+    Decimal = 3,
+    Break = 4,
+    Overflow = 6,
+    Negative = 7,
 }
 
 // pc, s, a, x, y, p
@@ -113,17 +106,6 @@ enum State {
     PageCrossed(bool),
 }
 
-// Status flags. Used in the processor status register p.
-pub enum Flags {
-    Carry = 0,
-    Zero = 1,
-    InterrputDisable = 2,
-    Decimal = 3,
-    Break = 4,
-    Overflow = 6,
-    Negative = 7,
-}
-
 #[allow(dead_code)]
 #[derive(Clone, Copy)]
 enum Vectors {
@@ -133,13 +115,6 @@ enum Vectors {
     ResHi = 0xFFFD,
     BrkLo = 0xFFFE,
     BrkHi = 0xFFFF,
-}
-
-#[derive(Clone, Copy)]
-enum IndexReg {
-    None,
-    X,
-    Y,
 }
 
 impl<'a> Cpu<'a> {
@@ -422,14 +397,10 @@ impl<'a> Cpu<'a> {
             },
             AddressingMode::Accumulator => self.state = State::ExecAcc,
             AddressingMode::Immediate => self.state = State::ExecImm,
-            AddressingMode::Absolute => self.state = State::FetchAbsLo(IndexReg::None),
-            AddressingMode::AbsoluteX => self.state = State::FetchAbsLo(IndexReg::X),
-            AddressingMode::AbsoluteY => self.state = State::FetchAbsLo(IndexReg::Y),
-            AddressingMode::ZeroPage => self.state = State::FetchZP(IndexReg::None),
-            AddressingMode::ZeroPageX => self.state = State::FetchZP(IndexReg::X),
-            AddressingMode::ZeroPageY => self.state = State::FetchZP(IndexReg::Y),
+            AddressingMode::Absolute(index_reg) => self.state = State::FetchAbsLo(index_reg),
+            AddressingMode::ZeroPage(index_reg) => self.state = State::FetchZP(index_reg),
             AddressingMode::Relative => self.state = State::FetchOffset,
-            _ => todo!("{:?}, {:?}", self.cur_mode, self.cur_nmeonic),
+            _ => todo!("Unimplemented addressing mode!"),
         }
     }
 
@@ -1082,10 +1053,7 @@ impl<'a> Cpu<'a> {
                 self.set_flag(Flags::Zero, self.a == 0);
                 self.set_flag(Flags::Negative, (self.a as i8) < 0);
             }
-            AddressingMode::ZeroPage
-            | AddressingMode::ZeroPageX
-            | AddressingMode::Absolute
-            | AddressingMode::AbsoluteX => {
+            AddressingMode::Absolute(_) | AddressingMode::ZeroPage(_) => {
                 let mut val = self.data;
                 let shifted_out = (val & (1 << 7)) != 0;
                 val <<= 1;
@@ -1276,10 +1244,7 @@ impl<'a> Cpu<'a> {
                 self.set_flag(Flags::Zero, self.a == 0);
                 self.set_flag(Flags::Negative, (self.a as i8) < 0); // Should be impossible to set
             }
-            AddressingMode::ZeroPage
-            | AddressingMode::ZeroPageX
-            | AddressingMode::Absolute
-            | AddressingMode::AbsoluteX => {
+            AddressingMode::Absolute(_) | AddressingMode::ZeroPage(_) => {
                 let val = self.data;
                 let shifted_out = (val & 1) != 0;
                 let result = val >> 1;
@@ -1354,10 +1319,7 @@ impl<'a> Cpu<'a> {
                 self.set_flag(Flags::Zero, self.a == 0);
                 self.set_flag(Flags::Negative, (self.a as i8) < 0);
             }
-            AddressingMode::ZeroPage
-            | AddressingMode::ZeroPageX
-            | AddressingMode::Absolute
-            | AddressingMode::AbsoluteX => {
+            AddressingMode::Absolute(_) | AddressingMode::ZeroPage(_) => {
                 let val = self.data;
                 let rotated_in = self.flag_set(Flags::Carry);
                 let rotated_out = (val & (1 << 7)) != 0;
@@ -1392,10 +1354,7 @@ impl<'a> Cpu<'a> {
                 self.set_flag(Flags::Zero, self.a == 0);
                 self.set_flag(Flags::Negative, (self.a as i8) < 0);
             }
-            AddressingMode::ZeroPage
-            | AddressingMode::ZeroPageX
-            | AddressingMode::Absolute
-            | AddressingMode::AbsoluteX => {
+            AddressingMode::Absolute(_) | AddressingMode::ZeroPage(_) => {
                 let val = self.data;
                 let rotated_in = self.flag_set(Flags::Carry);
                 let rotated_out = (val & 1) != 0;
