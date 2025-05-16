@@ -101,6 +101,8 @@ enum State {
 
     FetchOffset, // Fetch relative branch offset
 
+    IndirectAddX, // Add x to the base address low indirect mode
+
     // Boolean flag indicates page crossed up.
     // Extra cycle due to page boundry cross.
     PageCrossed(bool),
@@ -207,6 +209,7 @@ impl<'a> Cpu<'a> {
             State::PullPcL => self.pull_pcl(),
             State::PushP => self.push_p(),
             State::FetchOffset => self.fetch_offset(),
+            State::IndirectAddX => self.indirect_add_x(),
             State::PageCrossed(page_up) => self.page_crossed(page_up),
         }
     }
@@ -399,6 +402,7 @@ impl<'a> Cpu<'a> {
             AddressingMode::Immediate => self.state = State::ExecImm,
             AddressingMode::Absolute(index_reg) => self.state = State::FetchAbsLo(index_reg),
             AddressingMode::ZeroPage(index_reg) => self.state = State::FetchZP(index_reg),
+            AddressingMode::Indirect(index_reg) => self.state = State::FetchZP(index_reg), // Fetch a zero page address like normal
             AddressingMode::Relative => self.state = State::FetchOffset,
             _ => todo!("Unimplemented addressing mode!"),
         }
@@ -701,6 +705,9 @@ impl<'a> Cpu<'a> {
         self.latch_u16 = self.data as u16;
 
         self.pc = self.pc.wrapping_add(1);
+
+        if let AddressingMode::Indirect(_) = self.cur_mode {}
+
         match self.cur_nmeonic {
             Nmeonic::ASL
             | Nmeonic::DEC
@@ -972,6 +979,16 @@ impl<'a> Cpu<'a> {
         self.pc = self.pc.wrapping_add(1);
         self.latch_u8 = self.data;
         self.state = State::FetchOpcode(FROM_BRANCH);
+    }
+
+    fn indirect_add_x(&mut self) {
+        // Add X register to base address lo, dont cross page boundry.
+        self.latch_u8 = self.latch_u8.wrapping_add(1);
+        self.latch_u16 = self.latch_u8 as u16;
+
+        self.addr = self.latch_u16;
+        self.read = true;
+        self.access_bus();
     }
 
     fn page_crossed(&mut self, page_up: bool) {
