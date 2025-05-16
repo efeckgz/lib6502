@@ -82,6 +82,8 @@ enum State {
     // Absolute mode states
     FetchAbsLo(IndexReg),
     FetchAbsHi(IndexReg),
+    IndexedStoreExtra(bool), // Store instructions in indexed mode take extra cycle to calculate effective address.
+
     ExecAbs,
 
     // Zero page states
@@ -211,6 +213,9 @@ impl<'a> Cpu<'a> {
             State::ImplPull => self.impl_pull(),
             State::FetchAbsLo(index_reg) => self.fetch_abs_lo(index_reg),
             State::FetchAbsHi(index_reg) => self.fetch_abs_hi(index_reg),
+            State::IndexedStoreExtra(boundary_crossed) => {
+                self.indexed_store_extra(boundary_crossed)
+            }
             State::ExecAbs => self.exec_abs(),
             State::FetchZP => self.fetch_zp(),
             State::ExecZP => self.exec_zp(),
@@ -604,8 +609,27 @@ impl<'a> Cpu<'a> {
                 }
                 // self.state = State::RmwRead
             }
+            Nmeonic::STA | Nmeonic::STX | Nmeonic::STY => {
+                if let IndexReg::None = index_reg {
+                    self.state = State::ExecAbs;
+                } else {
+                    self.state = State::IndexedStoreExtra(boundary_crossed);
+                }
+            }
             _ => self.state = State::ExecAbs,
         }
+    }
+
+    fn indexed_store_extra(&mut self, boundary_crossed: bool) {
+        if boundary_crossed {
+            self.latch_u16 = self.latch_u16.wrapping_add(0x0100);
+        }
+
+        self.addr = self.latch_u16;
+        self.read = true;
+        self.access_bus();
+
+        self.state = State::ExecAbs; // Only store instructions will run in the match arm for exec_abs
     }
 
     fn exec_abs(&mut self) {
