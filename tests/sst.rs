@@ -92,6 +92,17 @@ fn sst() {
     run_tests("FD"); // sbc
     run_tests("9D"); // sta
 
+    // Absolute Y
+    run_tests("79");
+    run_tests("39");
+    run_tests("D9");
+    run_tests("59");
+    run_tests("B9");
+    run_tests("BE");
+    run_tests("19");
+    run_tests("F9");
+    run_tests("99");
+
     // Zero Page
     run_tests("65"); // adc
     run_tests("25"); // and
