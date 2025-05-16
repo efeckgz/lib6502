@@ -149,7 +149,7 @@ fn sst() {
     run_tests("96"); // stx
 
     // Indirect X
-    // run_tests("61"); // adc
+    run_tests("61"); // adc
     run_tests("21"); // and
     run_tests("C1"); // cmp
     run_tests("41"); // eor

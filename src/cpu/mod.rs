@@ -1028,6 +1028,8 @@ impl<'a> Cpu<'a> {
             self.read = true;
             self.access_bus();
 
+            self.latch_u8 = self.data;
+
             match self.cur_nmeonic {
                 Nmeonic::ADC => self.adc(),
                 Nmeonic::AND => self.and(),
@@ -1103,7 +1105,7 @@ impl<'a> Cpu<'a> {
         self.set_flag(Flags::Carry, of);
         self.set_flag(Flags::Zero, res == 0);
         self.set_flag(Flags::Negative, (res & 0x80) != 0);
-        self.set_flag(Flags::Overflow, ((a_prev ^ res) & (val ^ res) & 0x80) != 0); // (res, of)
+        self.set_flag(Flags::Overflow, ((a_prev ^ res) & (val ^ res) & 0x80) != 0);
     }
 
     fn and(&mut self) {
