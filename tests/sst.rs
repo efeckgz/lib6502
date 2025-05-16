@@ -75,6 +75,8 @@ fn sst() {
     run_tests("8E"); // stx
     run_tests("8C"); // sty
 
+    run_tests("1E");
+
     // Zero Page
     run_tests("65"); // adc
     run_tests("25"); // and

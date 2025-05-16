@@ -89,9 +89,10 @@ enum State {
     ExecZP,
 
     // Read-Modify-Write states
-    RmwRead,       // Read opcode from effective address
-    RmwDummyWrite, // Dummy write the value read to the effective address
-    RmwExec,       // Excecute the rmw instruction and write the result back
+    RmwIndexedExtra(bool), // Read from ea. Correct Hi byte if overflow on adding index register to ea.
+    RmwRead,               // Read opcode from effective address
+    RmwDummyWrite,         // Dummy write the value read to the effective address
+    RmwExec,               // Excecute the rmw instruction and write the result back
 
     // JSR states - JSR is a 6 cycle absolute instruction but it works differently than others.
     JsrDummyStack, // A dummy stack read is done before storing the pc
@@ -213,6 +214,7 @@ impl<'a> Cpu<'a> {
             State::ExecAbs => self.exec_abs(),
             State::FetchZP => self.fetch_zp(),
             State::ExecZP => self.exec_zp(),
+            State::RmwIndexedExtra(boundary_crossed) => self.rmw_indexed_extra(boundary_crossed),
             State::RmwRead => self.rmw_read(),
             State::RmwDummyWrite => self.rmw_dummy_write(),
             State::RmwExec => self.rmw_exec(),
@@ -567,14 +569,15 @@ impl<'a> Cpu<'a> {
         self.pc = self.pc.wrapping_add(1);
 
         let (lo, boundary_crossed) = self.latch_u8.overflowing_add(ir);
-        if boundary_crossed {
-            todo!("Page boundary crossing in Indexed absolute mode");
-        }
+        // if boundary_crossed {
+        //     todo!("Page boundary crossing in Indexed absolute mode");
+        // }
 
         let hi = self.data as u16;
         self.latch_u16 = (hi << 8) | (lo as u16);
 
         match self.cur_nmeonic {
+            // JMP and JSR do not have indexed absolute mode.
             Nmeonic::JMP => {
                 // Absolute JMP is only 3 cycles, there is no foruth cycle to fetch memroy from the effective address.
                 // pc is set to the effective address and state is back to fetch opcode.
@@ -585,14 +588,22 @@ impl<'a> Cpu<'a> {
                 self.pc = self.latch_u16;
                 self.state = State::FetchOpcode(NOT_FROM_BRANCH);
             }
+
             // Read-Modify-Write instructions.
-            // These instructions take 6 cycles.
+            // These instructions take 6 cycles in non indexed mode, 7 in indexed mode.
             Nmeonic::ASL
             | Nmeonic::DEC
             | Nmeonic::INC
             | Nmeonic::LSR
             | Nmeonic::ROL
-            | Nmeonic::ROR => self.state = State::RmwRead,
+            | Nmeonic::ROR => {
+                if let IndexReg::None = index_reg {
+                    self.state = State::RmwRead; // Not in indexed mode
+                } else {
+                    self.state = State::RmwIndexedExtra(boundary_crossed)
+                }
+                // self.state = State::RmwRead
+            }
             _ => self.state = State::ExecAbs,
         }
     }
@@ -797,6 +808,20 @@ impl<'a> Cpu<'a> {
         }
 
         self.state = State::FetchOpcode(NOT_FROM_BRANCH);
+    }
+
+    fn rmw_indexed_extra(&mut self, boundary_crossed: bool) {
+        // At this point self.latch_u16 holds BAH, BAL + ir
+        // Read on this address, then correct the hi byte before continuing on regular RMW.
+        self.addr = self.latch_u16;
+        self.read = true;
+        self.access_bus();
+
+        if boundary_crossed {
+            self.latch_u16 = self.latch_u16.wrapping_add(0x0100);
+        }
+
+        self.state = State::RmwRead;
     }
 
     fn rmw_read(&mut self) {
