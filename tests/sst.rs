@@ -148,6 +148,16 @@ fn sst() {
     run_tests("B6"); // ldx
     run_tests("96"); // stx
 
+    // Indirect X
+    // run_tests("61"); // adc
+    run_tests("21"); // and
+    run_tests("C1"); // cmp
+    run_tests("41"); // eor
+    run_tests("A1"); // lda
+    run_tests("01"); // ora
+    run_tests("E1"); // sbc
+    run_tests("81"); // sta
+
     // Relative
     run_tests("90"); // bcc
     run_tests("B0"); // bcs

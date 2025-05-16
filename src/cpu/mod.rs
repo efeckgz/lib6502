@@ -101,8 +101,10 @@ enum State {
 
     FetchOffset, // Fetch relative branch offset
 
-    IndirectAddX, // Add x to the base address low indirect mode
-
+    IndirectAddX,    // Add x to the base address low indirect mode
+    IndirectFetchLo, // Fetch lo byte from 00, BAL+X
+    IndirectFetchHi, // Fetch hi byte from 00, BAL+X+1
+    ExecIndirect,    // Execute indirect mode instruction
     // Boolean flag indicates page crossed up.
     // Extra cycle due to page boundry cross.
     PageCrossed(bool),
@@ -210,6 +212,9 @@ impl<'a> Cpu<'a> {
             State::PushP => self.push_p(),
             State::FetchOffset => self.fetch_offset(),
             State::IndirectAddX => self.indirect_add_x(),
+            State::IndirectFetchLo => self.indirect_fetch_lo(),
+            State::IndirectFetchHi => self.indirect_fetch_hi(),
+            State::ExecIndirect => self.exec_indirect(),
             State::PageCrossed(page_up) => self.page_crossed(page_up),
         }
     }
@@ -706,7 +711,13 @@ impl<'a> Cpu<'a> {
 
         self.pc = self.pc.wrapping_add(1);
 
-        if let AddressingMode::Indirect(_) = self.cur_mode {}
+        if let AddressingMode::Indirect(ir) = self.cur_mode {
+            match ir {
+                IndexReg::X => self.state = State::IndirectAddX,
+                _ => todo!("Complete whatever this will be"),
+            }
+            return;
+        }
 
         match self.cur_nmeonic {
             Nmeonic::ASL
@@ -715,14 +726,11 @@ impl<'a> Cpu<'a> {
             | Nmeonic::LSR
             | Nmeonic::ROL
             | Nmeonic::ROR => {
-                // self.latch_u16 = self.latch_u8 as u16;
                 if let IndexReg::None = index_reg {
                     self.state = State::RmwRead;
                 } else {
-                    // todo!("Indexed Zero Page RMW instructions")
                     self.state = State::IndexedZPDummy(index_reg)
                 }
-                // self.state = State::RmwRead;
             }
             _ => {
                 if let IndexReg::None = index_reg {
@@ -730,25 +738,15 @@ impl<'a> Cpu<'a> {
                 } else {
                     self.state = State::IndexedZPDummy(index_reg)
                 }
-                // self.state = State::ExecZP
             }
         }
     }
 
     fn exec_zp(&mut self) {
         match self.cur_nmeonic {
-            Nmeonic::STA => {
-                // self.latch_u16 = self.latch_u8 as u16;
-                self.sta();
-            }
-            Nmeonic::STX => {
-                // self.latch_u16 = self.latch_u8 as u16;
-                self.stx();
-            }
-            Nmeonic::STY => {
-                // self.latch_u16 = self.latch_u8 as u16;
-                self.sty();
-            }
+            Nmeonic::STA => self.sta(),
+            Nmeonic::STX => self.stx(),
+            Nmeonic::STY => self.sty(),
             Nmeonic::ADC => {
                 self.addr = self.latch_u16;
                 self.read = true;
@@ -983,12 +981,68 @@ impl<'a> Cpu<'a> {
 
     fn indirect_add_x(&mut self) {
         // Add X register to base address lo, dont cross page boundry.
-        self.latch_u8 = self.latch_u8.wrapping_add(1);
-        self.latch_u16 = self.latch_u8 as u16;
+        // self.latch_u8 = self.latch_u8.wrapping_add(1);
+        // self.latch_u16 = self.latch_u8 as u16;
 
         self.addr = self.latch_u16;
         self.read = true;
         self.access_bus();
+
+        self.latch_u8 = self.latch_u8.wrapping_add(self.x);
+        self.latch_u16 = self.latch_u8 as u16;
+
+        self.state = State::IndirectFetchLo;
+    }
+
+    fn indirect_fetch_lo(&mut self) {
+        self.addr = self.latch_u16;
+        self.read = true;
+        self.access_bus();
+
+        // To not cross page boundry when advancing the address, wrapping increment the lo byte and cast to bigger type
+        // to get the hi byte as 0.
+        self.latch_u8 = self.latch_u8.wrapping_add(1);
+        self.latch_u16 = self.latch_u8 as u16;
+
+        self.latch_u8 = self.data; // Save the lo byte in latch
+        self.state = State::IndirectFetchHi;
+    }
+
+    fn indirect_fetch_hi(&mut self) {
+        self.addr = self.latch_u16;
+        self.read = true;
+        self.access_bus();
+
+        let lo = self.latch_u8 as u16;
+        let hi = self.data as u16;
+        self.latch_u16 = (hi << 8) | lo;
+
+        self.state = State::ExecIndirect;
+    }
+
+    fn exec_indirect(&mut self) {
+        if let Nmeonic::STA = self.cur_nmeonic {
+            self.sta();
+        } else {
+            self.addr = self.latch_u16;
+            self.read = true;
+            self.access_bus();
+
+            match self.cur_nmeonic {
+                Nmeonic::ADC => self.adc(),
+                Nmeonic::AND => self.and(),
+                Nmeonic::CMP => self.cmp(),
+                Nmeonic::EOR => self.eor(),
+                Nmeonic::LDA => self.lda(),
+                Nmeonic::ORA => self.ora(),
+                Nmeonic::SBC => {
+                    self.latch_u8 = self.data ^ 0xFF;
+                    self.adc();
+                }
+                _ => panic!("Unrecognized nmeonic for indirectX"),
+            }
+        }
+        self.state = State::FetchOpcode(NOT_FROM_BRANCH)
     }
 
     fn page_crossed(&mut self, page_up: bool) {
