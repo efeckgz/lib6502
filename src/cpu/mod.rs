@@ -1075,7 +1075,13 @@ impl<'a> Cpu<'a> {
 
         self.latch_u16 = (hi << 8) | (lo as u16);
 
-        self.state = State::IndirectYDummyRead(boundary_cross);
+        self.state = if let Nmeonic::STA = self.cur_nmeonic {
+            State::IndirectYDummyRead(boundary_cross)
+        } else if boundary_cross {
+            State::PageCrossed(true) // Pass true to go page up
+        } else {
+            State::ExecIndirect
+        };
     }
 
     fn indirect_y_dummy_read(&mut self, boundary_crossed: bool) {
@@ -1101,12 +1107,21 @@ impl<'a> Cpu<'a> {
             self.latch_u16.wrapping_sub(0x0100)
         };
 
-        if let AddressingMode::Relative = self.cur_mode {
-            self.pc = self.latch_u16;
-            self.state = State::FetchOpcode(NOT_FROM_BRANCH);
-        } else {
-            self.state = State::ExecAbs; // This will surely change
-        }
+        self.state = match self.cur_mode {
+            AddressingMode::Relative => {
+                self.pc = self.latch_u16;
+                State::FetchOpcode(NOT_FROM_BRANCH)
+            }
+            AddressingMode::Indirect(_) => State::ExecIndirect,
+            _ => State::ExecAbs,
+        };
+
+        // if let AddressingMode::Relative = self.cur_mode {
+        //     self.pc = self.latch_u16;
+        //     self.state = State::FetchOpcode(NOT_FROM_BRANCH);
+        // } else {
+        //     self.state = State::ExecAbs; // This will surely change
+        // }
     }
 
     fn access_bus(&mut self) {

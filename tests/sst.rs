@@ -159,6 +159,13 @@ fn sst() {
     run_tests("81"); // sta
 
     // Indirect Y
+    run_tests("71"); // adc
+    run_tests("31"); // and
+    run_tests("D1"); // cmp
+    run_tests("51"); // eor
+    run_tests("B1"); // lda
+    run_tests("11"); // ora
+    run_tests("F1"); // sbc
     run_tests("91"); // sta
 
     // Relative
