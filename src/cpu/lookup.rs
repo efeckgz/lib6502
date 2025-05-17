@@ -12,7 +12,7 @@ pub enum AddressingMode {
     Absolute(IndexReg),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum IndexReg {
     None,
     X,

@@ -48,6 +48,7 @@ pub enum Flags {
 pub type RegisterState = (u16, u8, u8, u8, u8, u8);
 
 // Inner state of the processor, used in state machine.
+#[derive(PartialEq)]
 enum State {
     // Reset states
     ResetHold,
@@ -119,7 +120,7 @@ enum State {
 }
 
 #[allow(dead_code)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 enum Vectors {
     NmiLo = 0xFFFA,
     NmiHi = 0xFFFB,
@@ -230,6 +231,14 @@ impl<'a> Cpu<'a> {
             State::IndirectYFetchBAH => self.indirect_y_fetch_bah(),
             State::IndirectYDummyRead(boundary_cross) => self.indirect_y_dummy_read(boundary_cross),
             State::PageCrossed(page_up) => self.page_crossed(page_up),
+        }
+    }
+
+    // Step the cpu forward 1 instruction
+    pub fn instruction_step(&mut self) {
+        self.cycle();
+        while self.state != State::FetchOpcode(NOT_FROM_BRANCH) {
+            self.cycle();
         }
     }
 
