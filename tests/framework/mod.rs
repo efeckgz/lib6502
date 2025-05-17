@@ -1,5 +1,7 @@
 mod utils;
 
+use std::path::PathBuf;
+
 use lib6502::bus::Bus;
 use lib6502::cpu::Cpu;
 use utils::{Ram, State, TESTS_DIR, Test};
@@ -12,8 +14,10 @@ pub fn run_tests(opcode: &str) {
 }
 
 fn load_tests(name: &str) -> Vec<Test> {
-    let test_name = TESTS_DIR.to_owned() + &format!("/{}.json", name);
-    let bytes = std::fs::read(test_name).unwrap();
+    let mut p = PathBuf::from(TESTS_DIR);
+    p.push(&format!("{}.json", name));
+
+    let bytes = std::fs::read(p.as_path()).unwrap();
     serde_json::from_slice(&bytes).unwrap()
 }
 
