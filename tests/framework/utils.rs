@@ -2,7 +2,6 @@ use lib6502::{bus::BusDevice, cpu::RegisterState};
 
 use serde::{Deserialize, Serialize};
 
-// Works on my mac
 pub const TESTS_DIR: &str = "./65x02/nes6502/v1";
 
 #[derive(Serialize, Deserialize, Debug)]

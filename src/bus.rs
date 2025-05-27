@@ -33,17 +33,10 @@ impl<T: BusDevice, const N: usize> Bus<T, N> {
     }
 
     // Add a new device to the bus
-    pub fn map_device(
-        &mut self,
-        start_addr: u16,
-        end_addr: u16,
-        // device: &'a mut dyn BusDevice,
-        device: T,
-    ) -> Result<(), ()> {
+    pub fn map_device(&mut self, start_addr: u16, end_addr: u16, device: T) -> Result<(), ()> {
         for slot in &mut self.slots {
             if (*slot).is_none() {
                 *slot = Some((start_addr, end_addr, device));
-                // *slot = Some(Device::new(start_addr, end_addr, device));
                 return Ok(());
             }
         }

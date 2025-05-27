@@ -1047,9 +1047,6 @@ impl<'a> Cpu<'a> {
 
     fn indirect_add_x(&mut self) {
         // Add X register to base address lo, dont cross page boundry.
-        // self.latch_u8 = self.latch_u8.wrapping_add(1);
-        // self.latch_u16 = self.latch_u8 as u16;
-
         self.addr = self.latch_u16;
         self.read = true;
         self.access_bus();
@@ -1175,13 +1172,6 @@ impl<'a> Cpu<'a> {
             AddressingMode::Indirect(_) => State::ExecIndirect,
             _ => State::ExecAbs,
         };
-
-        // if let AddressingMode::Relative = self.cur_mode {
-        //     self.pc = self.latch_u16;
-        //     self.state = State::FetchOpcode(NOT_FROM_BRANCH);
-        // } else {
-        //     self.state = State::ExecAbs; // This will surely change
-        // }
     }
 
     fn access_bus(&mut self) {
