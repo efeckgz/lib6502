@@ -82,16 +82,6 @@ impl Ram {
             self.write(addr, byte);
         }
     }
-
-    pub fn get_state(&mut self, st: &State) -> Vec<(u16, u8)> {
-        let mut res: Vec<(u16, u8)> = vec![];
-        let supposed = st.ram.clone();
-        for (addr, _) in supposed.iter() {
-            let data = self.read(*addr);
-            res.push((*addr as u16, data));
-        }
-        res
-    }
 }
 
 impl BusDevice for Ram {
