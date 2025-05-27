@@ -34,6 +34,24 @@ pub struct Ram {
     pub bytes: [u8; 65536],
 }
 
+pub enum Devices {
+    Ram(Ram),
+}
+
+impl BusDevice for Devices {
+    fn read(&mut self, addr: u16) -> u8 {
+        match self {
+            Devices::Ram(ram) => ram.read(addr),
+        }
+    }
+
+    fn write(&mut self, addr: u16, data: u8) {
+        match self {
+            Devices::Ram(ram) => ram.write(addr, data),
+        }
+    }
+}
+
 impl State {
     pub fn new((pc, s, a, x, y, p): RegisterState, ram: Vec<(u16, u8)>) -> Self {
         Self {
