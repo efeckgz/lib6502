@@ -26,11 +26,11 @@ fn run_single_test(t: Test) {
     let init = &t.initial_state;
     let final_state = &t.final_state;
 
-    let mut bus: Bus<1> = Bus::new();
+    let mut bus: Bus<Ram, 1> = Bus::new();
     let mut ram = Ram::new();
 
     ram.load_from_state(init.clone());
-    bus.map_device(0x0000, 0xFFFF, &mut ram).unwrap();
+    bus.map_device(0x0000, 0xFFFF, ram).unwrap();
 
     let mut cpu = Cpu::from_register_state(init.to_registers(), &mut bus);
 
