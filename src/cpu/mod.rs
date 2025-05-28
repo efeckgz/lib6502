@@ -1,6 +1,6 @@
 mod lookup;
 
-use crate::bus::BusDevice;
+use crate::bus::{Bus, BusDevice};
 use lookup::{AddressingMode, IndexReg, LOOKUP, Nmeonic};
 
 const STACK_BASE: u16 = 0x0100;
@@ -8,7 +8,8 @@ const STACK_BASE: u16 = 0x0100;
 const FROM_BRANCH: bool = true;
 const NOT_FROM_BRANCH: bool = false;
 
-pub struct Cpu<'a> {
+// T and N are generic parameters for the Bus. T ensures the devices the cpu drives in the Bus are BusDevice objects. N is the number of devices.
+pub struct Cpu<T: BusDevice, const N: usize> {
     // Internal state
     pub a: u8,   // Accumulator
     pub x: u8,   // Index register x
@@ -23,10 +24,11 @@ pub struct Cpu<'a> {
     cur_nmeonic: Nmeonic,
 
     // Bus variables
-    pub bus: &'a mut dyn BusDevice, // The bus itself
-    pub addr: u16,                  // 16 bit address bus value
-    pub data: u8,                   // 8 bit data bus value
-    pub read: bool,                 // bus read/write mode control variable
+    // pub bus: &'a mut dyn BusDevice, // The bus itself
+    pub bus: Bus<T, N>, // The bus itself
+    pub addr: u16,      // 16 bit address bus value
+    pub data: u8,       // 8 bit data bus value
+    pub read: bool,     // bus read/write mode control variable
 
     // Latches to hold temporary values
     latch_u8: u8,
@@ -130,8 +132,8 @@ enum Vectors {
     BrkHi = 0xFFFF,
 }
 
-impl<'a> Cpu<'a> {
-    pub fn new(bus: &'a mut dyn BusDevice) -> Self {
+impl<T: BusDevice, const N: usize> Cpu<T, N> {
+    pub fn new(bus: Bus<T, N>) -> Self {
         Self {
             a: 0,
             x: 0,
@@ -151,10 +153,7 @@ impl<'a> Cpu<'a> {
         }
     }
 
-    pub fn from_register_state(
-        (pc, s, a, x, y, p): RegisterState,
-        bus: &'a mut dyn BusDevice,
-    ) -> Self {
+    pub fn from_register_state((pc, s, a, x, y, p): RegisterState, bus: Bus<T, N>) -> Self {
         Self {
             a,
             x,
