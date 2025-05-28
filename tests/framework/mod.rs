@@ -24,15 +24,15 @@ fn load_tests(name: &str) -> Vec<Test> {
 fn run_single_test(t: Test) {
     print!("Running test {}", t.name);
     let init = &t.initial_state;
-    let final_state = &t.final_state;
+    let final_state = t.final_state;
 
     let mut bus: Bus<Devices, 1> = Bus::new();
 
     let mut _ram = Ram::new();
     _ram.load_from_state(init.clone());
 
-    let ram = Devices::Ram(_ram);
-    bus.map_device(0x0000, 0xFFFF, ram).unwrap();
+    let ram_device = Devices::Ram(_ram);
+    bus.map_device(0x0000, 0xFFFF, ram_device).unwrap();
 
     let mut cpu = Cpu::from_register_state(init.to_registers(), &mut bus);
 
@@ -52,8 +52,8 @@ fn run_single_test(t: Test) {
         i += 1;
     }
 
-    let final_cpu = State::new(cpu.get_state(), get_final_mem(&mut bus, final_state));
-    assert_eq!(final_cpu, *final_state);
+    let final_cpu = State::new(cpu.get_state(), get_final_mem(&mut bus, &final_state));
+    assert_eq!(final_cpu, final_state);
     println!("\t{}", text_green("PASS!"));
 }
 
