@@ -153,6 +153,23 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
         }
     }
 
+    // Reset back to initial state. Does not reset bus.
+    pub fn reset(&mut self) {
+        self.s = 255;
+        self.a = 0;
+        self.x = 0;
+        self.y = 0;
+        self.p = 0;
+        self.state = State::ResetHold;
+        self.cur_mode = AddressingMode::None;
+        self.cur_nmeonic = Nmeonic::None;
+        self.addr = 0;
+        self.data = 0;
+        self.read = false;
+        self.latch_u8 = 0;
+        self.latch_u16 = 0;
+    }
+
     pub fn from_register_state((pc, s, a, x, y, p): RegisterState, bus: Bus<T, N>) -> Self {
         Self {
             a,
