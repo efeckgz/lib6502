@@ -155,6 +155,7 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
 
     // Reset back to initial state. Does not reset bus.
     pub fn reset(&mut self) {
+        self.pc = 0;
         self.s = 255;
         self.a = 0;
         self.x = 0;
