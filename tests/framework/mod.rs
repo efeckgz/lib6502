@@ -32,7 +32,7 @@ fn run_single_test(t: Test) {
     _ram.load_from_state(init.clone());
 
     let ram_device = Devices::Ram(_ram);
-    bus.map_device(0x0000, 0xFFFF, ram_device).unwrap();
+    bus.map_device(0x0000, 0xFFFF, ram_device, 1).unwrap();
 
     let mut cpu = Cpu::from_register_state(init.to_registers(), bus);
 

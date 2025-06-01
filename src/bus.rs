@@ -7,8 +7,8 @@ pub trait BusDevice {
     fn write(&mut self, addr: u16, data: u8);
 }
 
-// A device slot in the bus will be a 3-tuple of the device start address, end address and the device itself.
-type DeviceSlot<T> = Option<(u16, u16, T)>;
+// A device slot in the bus will be a 4-tuple of the device id, start address, end address and the device itself.
+type DeviceSlot<T> = Option<(usize, u16, u16, T)>;
 
 // The Bus will be a collection of devices mapped to their respective addresses.
 pub struct Bus<T, const N: usize> {
@@ -33,14 +33,32 @@ impl<T: BusDevice, const N: usize> Bus<T, N> {
     }
 
     // Add a new device to the bus
-    pub fn map_device(&mut self, start_addr: u16, end_addr: u16, device: T) -> Result<(), ()> {
+    pub fn map_device(
+        &mut self,
+        start_addr: u16,
+        end_addr: u16,
+        device: T,
+        id: usize,
+    ) -> Result<(), ()> {
         for slot in &mut self.slots {
             if (*slot).is_none() {
-                *slot = Some((start_addr, end_addr, device));
+                *slot = Some((id, start_addr, end_addr, device));
                 return Ok(());
             }
         }
         Err(()) // No space left on the bus
+    }
+
+    // Mutable borrow a device based on its id.
+    pub fn borrow_device_mut(&mut self, id: usize) -> Option<&mut T> {
+        for slot in &mut self.slots {
+            if let Some((slot_id, _, _, device)) = slot {
+                if *slot_id == id {
+                    return Some(device);
+                }
+            }
+        }
+        None
     }
 }
 
@@ -48,7 +66,7 @@ impl<T: BusDevice, const N: usize> BusDevice for Bus<T, N> {
     // Perform a bus read on the given device
     fn read(&mut self, addr: u16) -> u8 {
         for slot in self.slots.iter_mut().flatten() {
-            let (start, end, device) = slot;
+            let (_, start, end, device) = slot;
             if addr >= *start && addr <= *end {
                 // address corresponds to the range of this device
                 return device.read(addr);
@@ -60,7 +78,7 @@ impl<T: BusDevice, const N: usize> BusDevice for Bus<T, N> {
     // Perform a bus write from the given device
     fn write(&mut self, addr: u16, data: u8) {
         for slot in self.slots.iter_mut().flatten() {
-            let (start, end, device) = slot;
+            let (_, start, end, device) = slot;
             if addr >= *start && addr <= *end {
                 // address corresponds to range of this device
                 device.write(addr, data);
