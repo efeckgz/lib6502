@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 
 pub const TESTS_DIR: &str = "./65x02/nes6502/v1";
 
+const RAM_SIZE: usize = 65536;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Test {
     pub name: String,
@@ -30,7 +32,7 @@ pub struct State {
 
 #[derive(Clone)]
 pub struct Ram {
-    pub bytes: [u8; 65536],
+    pub bytes: [u8; RAM_SIZE],
 }
 
 pub enum Devices {
@@ -72,7 +74,7 @@ impl State {
 impl Ram {
     pub fn new() -> Self {
         Self {
-            bytes: [0_u8; 65536],
+            bytes: [0_u8; RAM_SIZE],
         }
     }
 

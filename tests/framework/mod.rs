@@ -52,8 +52,8 @@ fn run_single_test(t: Test) {
         i += 1;
     }
 
-    // let final_cpu = State::new(cpu.get_state(), get_final_mem(&mut bus, &final_state));
-    // assert_eq!(final_cpu, final_state);
+    let final_cpu = State::new(cpu.get_state(), get_final_mem(&mut cpu.bus, &final_state));
+    assert_eq!(final_cpu, final_state);
     println!("\t{}", text_green("PASS!"));
 }
 
