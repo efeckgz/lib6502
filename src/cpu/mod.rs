@@ -1,7 +1,7 @@
 mod lookup;
 
 use crate::bus::{Bus, BusDevice};
-use lookup::{AddressingMode, IndexReg, LOOKUP, Nmeonic};
+use lookup::{AddressingMode, IndexReg, LOOKUP, Mnemonic};
 
 const STACK_BASE: u16 = 0x0100;
 
@@ -21,7 +21,7 @@ pub struct Cpu<T: BusDevice, const N: usize> {
     // Internal control
     state: State,
     cur_mode: AddressingMode,
-    cur_nmeonic: Nmeonic,
+    cur_mnemonic: Mnemonic,
 
     // Bus variables
     // pub bus: &'a mut dyn BusDevice, // The bus itself
@@ -143,7 +143,7 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
             s: 0xFF,                 // Start at stack top - not the specified behavior
             state: State::ResetHold, // Start the cpu at the reset state.
             cur_mode: AddressingMode::None,
-            cur_nmeonic: Nmeonic::None,
+            cur_mnemonic: Mnemonic::None,
             bus,
             addr: 0,
             data: 0,
@@ -163,7 +163,7 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
         self.p = 0;
         self.state = State::ResetHold;
         self.cur_mode = AddressingMode::None;
-        self.cur_nmeonic = Nmeonic::None;
+        self.cur_mnemonic = Mnemonic::None;
         self.addr = 0;
         self.data = 0;
         self.read = false;
@@ -181,7 +181,7 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
             s,
             state: State::FetchOpcode(NOT_FROM_BRANCH),
             cur_mode: AddressingMode::None,
-            cur_nmeonic: Nmeonic::None,
+            cur_mnemonic: Mnemonic::None,
             bus,
             addr: 0,
             data: 0,
@@ -308,7 +308,7 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
     fn fetch_first_vec(&mut self, vector: Vectors) {
         // Brk instruction sets the I flag after pulling the status register from stack.
         // It is unclear exactly on which cycle this happens, and to my knowledge it doesn't matter anyway.
-        if let Nmeonic::BRK = self.cur_nmeonic {
+        if let Mnemonic::BRK = self.cur_mnemonic {
             self.set_flag(Flags::InterrputDisable, true);
         }
 
@@ -343,10 +343,10 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
         self.access_bus();
 
         // May adjust later to accomodate more states
-        match self.cur_nmeonic {
-            Nmeonic::PHP | Nmeonic::PHA => self.state = State::ImplPush,
-            Nmeonic::PLP | Nmeonic::PLA | Nmeonic::RTI => self.state = State::ReadIncS,
-            Nmeonic::RTS => {
+        match self.cur_mnemonic {
+            Mnemonic::PHP | Mnemonic::PHA => self.state = State::ImplPush,
+            Mnemonic::PLP | Mnemonic::PLA | Mnemonic::RTI => self.state = State::ReadIncS,
+            Mnemonic::RTS => {
                 self.state = if rts_t5 {
                     self.pc = self.pc.wrapping_add(1);
                     State::FetchOpcode(NOT_FROM_BRANCH)
@@ -354,7 +354,7 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
                     State::ReadIncS
                 };
             }
-            Nmeonic::BRK => {
+            Mnemonic::BRK => {
                 // Look here if there is a pc related issue
                 self.pc = self.pc.wrapping_add(1);
                 self.state = State::PushPcH
@@ -371,15 +371,15 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
         self.access_bus();
 
         // Branch is taken if the flags are set accordingly and we are decoding a branch
-        let branch_taken = match self.cur_nmeonic {
-            Nmeonic::BCC => self.bcc() && from_branch,
-            Nmeonic::BCS => self.bcs() && from_branch,
-            Nmeonic::BEQ => self.beq() && from_branch,
-            Nmeonic::BMI => self.bmi() && from_branch,
-            Nmeonic::BNE => self.bne() && from_branch,
-            Nmeonic::BPL => self.bpl() && from_branch,
-            Nmeonic::BVC => self.bvc() && from_branch,
-            Nmeonic::BVS => self.bvs() && from_branch,
+        let branch_taken = match self.cur_mnemonic {
+            Mnemonic::BCC => self.bcc() && from_branch,
+            Mnemonic::BCS => self.bcs() && from_branch,
+            Mnemonic::BEQ => self.beq() && from_branch,
+            Mnemonic::BMI => self.bmi() && from_branch,
+            Mnemonic::BNE => self.bne() && from_branch,
+            Mnemonic::BPL => self.bpl() && from_branch,
+            Mnemonic::BVC => self.bvc() && from_branch,
+            Mnemonic::BVS => self.bvs() && from_branch,
             _ => false,
         };
 
@@ -405,42 +405,42 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
         if let Some(instruction) = LOOKUP[self.data as usize] {
             let (mode, nm) = instruction;
             self.cur_mode = mode;
-            self.cur_nmeonic = nm;
+            self.cur_mnemonic = nm;
         } else {
             todo!("Illegal opcode");
         }
 
         match self.cur_mode {
-            AddressingMode::Implied => match self.cur_nmeonic {
+            AddressingMode::Implied => match self.cur_mnemonic {
                 // These instructions require 2 cycles only.
-                Nmeonic::CLC
-                | Nmeonic::CLD
-                | Nmeonic::CLV
-                | Nmeonic::CLI
-                | Nmeonic::DEX
-                | Nmeonic::DEY
-                | Nmeonic::INX
-                | Nmeonic::INY
-                | Nmeonic::NOP
-                | Nmeonic::SEC
-                | Nmeonic::SED
-                | Nmeonic::SEI
-                | Nmeonic::TAX
-                | Nmeonic::TAY
-                | Nmeonic::TSX
-                | Nmeonic::TXA
-                | Nmeonic::TXS
-                | Nmeonic::TYA => self.state = State::ExecImpl,
+                Mnemonic::CLC
+                | Mnemonic::CLD
+                | Mnemonic::CLV
+                | Mnemonic::CLI
+                | Mnemonic::DEX
+                | Mnemonic::DEY
+                | Mnemonic::INX
+                | Mnemonic::INY
+                | Mnemonic::NOP
+                | Mnemonic::SEC
+                | Mnemonic::SED
+                | Mnemonic::SEI
+                | Mnemonic::TAX
+                | Mnemonic::TAY
+                | Mnemonic::TSX
+                | Mnemonic::TXA
+                | Mnemonic::TXS
+                | Mnemonic::TYA => self.state = State::ExecImpl,
 
                 // These instructions are stack operations and require more than 2 cycles.
-                Nmeonic::PHA | Nmeonic::PHP | Nmeonic::PLA | Nmeonic::PLP | Nmeonic::RTS => {
+                Mnemonic::PHA | Mnemonic::PHP | Mnemonic::PLA | Mnemonic::PLP | Mnemonic::RTS => {
                     self.state = State::DummyReadPc(false)
                 }
 
-                Nmeonic::BRK => {
+                Mnemonic::BRK => {
                     self.state = State::DummyReadPc(false);
                 }
-                Nmeonic::RTI => self.state = State::DummyReadPc(false),
+                Mnemonic::RTI => self.state = State::DummyReadPc(false),
                 _ => panic!("Unrecognized nmeonic for implied mode instruction"),
             },
             AddressingMode::Accumulator => self.state = State::ExecAcc,
@@ -459,25 +459,25 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
         self.read = true;
         self.access_bus();
 
-        match self.cur_nmeonic {
-            Nmeonic::CLC => self.clc(),
-            Nmeonic::CLD => self.cld(),
-            Nmeonic::CLI => self.cli(),
-            Nmeonic::CLV => self.clv(),
-            Nmeonic::DEX => self.dex(),
-            Nmeonic::DEY => self.dey(),
-            Nmeonic::INX => self.inx(),
-            Nmeonic::INY => self.iny(),
-            Nmeonic::NOP => self.nop(),
-            Nmeonic::SEC => self.sec(),
-            Nmeonic::SED => self.sed(),
-            Nmeonic::SEI => self.sei(),
-            Nmeonic::TAX => self.tax(),
-            Nmeonic::TAY => self.tay(),
-            Nmeonic::TSX => self.tsx(),
-            Nmeonic::TXA => self.txa(),
-            Nmeonic::TXS => self.txs(),
-            Nmeonic::TYA => self.tya(),
+        match self.cur_mnemonic {
+            Mnemonic::CLC => self.clc(),
+            Mnemonic::CLD => self.cld(),
+            Mnemonic::CLI => self.cli(),
+            Mnemonic::CLV => self.clv(),
+            Mnemonic::DEX => self.dex(),
+            Mnemonic::DEY => self.dey(),
+            Mnemonic::INX => self.inx(),
+            Mnemonic::INY => self.iny(),
+            Mnemonic::NOP => self.nop(),
+            Mnemonic::SEC => self.sec(),
+            Mnemonic::SED => self.sed(),
+            Mnemonic::SEI => self.sei(),
+            Mnemonic::TAX => self.tax(),
+            Mnemonic::TAY => self.tay(),
+            Mnemonic::TSX => self.tsx(),
+            Mnemonic::TXA => self.txa(),
+            Mnemonic::TXS => self.txs(),
+            Mnemonic::TYA => self.tya(),
             _ => panic!("Unrecognized nmeonic for 2 cycle implied mode!"),
         }
 
@@ -491,18 +491,18 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
         self.latch_u8 = self.data;
         self.pc = self.pc.wrapping_add(1);
 
-        match self.cur_nmeonic {
-            Nmeonic::ADC => self.adc(),
-            Nmeonic::AND => self.and(),
-            Nmeonic::CMP => self.cmp(),
-            Nmeonic::CPX => self.cpx(),
-            Nmeonic::CPY => self.cpy(),
-            Nmeonic::EOR => self.eor(),
-            Nmeonic::LDA => self.lda(),
-            Nmeonic::LDX => self.ldx(),
-            Nmeonic::LDY => self.ldy(),
-            Nmeonic::ORA => self.ora(),
-            Nmeonic::SBC => {
+        match self.cur_mnemonic {
+            Mnemonic::ADC => self.adc(),
+            Mnemonic::AND => self.and(),
+            Mnemonic::CMP => self.cmp(),
+            Mnemonic::CPX => self.cpx(),
+            Mnemonic::CPY => self.cpy(),
+            Mnemonic::EOR => self.eor(),
+            Mnemonic::LDA => self.lda(),
+            Mnemonic::LDX => self.ldx(),
+            Mnemonic::LDY => self.ldy(),
+            Mnemonic::ORA => self.ora(),
+            Mnemonic::SBC => {
                 self.latch_u8 ^= 0xFF;
                 self.adc();
             }
@@ -519,21 +519,21 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
         self.read = true;
         self.access_bus();
 
-        match self.cur_nmeonic {
+        match self.cur_mnemonic {
             // Boolean parameter is_accumulator passed true for accumulator addressing mode
-            Nmeonic::ASL => self.asl(),
-            Nmeonic::LSR => self.lsr(),
-            Nmeonic::ROL => self.rol(),
-            Nmeonic::ROR => self.ror(),
+            Mnemonic::ASL => self.asl(),
+            Mnemonic::LSR => self.lsr(),
+            Mnemonic::ROL => self.rol(),
+            Mnemonic::ROR => self.ror(),
             _ => panic!("Unrecognized opcode-addressing mode-nmeonic combination!"),
         }
         self.state = State::FetchOpcode(NOT_FROM_BRANCH);
     }
 
     fn impl_push(&mut self) {
-        match self.cur_nmeonic {
-            Nmeonic::PHA => self.pha(),
-            Nmeonic::PHP => self.php(),
+        match self.cur_mnemonic {
+            Mnemonic::PHA => self.pha(),
+            Mnemonic::PHP => self.php(),
             _ => panic!("Unrecognized push operation!"),
         }
         self.state = State::FetchOpcode(NOT_FROM_BRANCH);
@@ -545,7 +545,7 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
         self.access_bus();
         self.s = self.s.wrapping_add(1);
 
-        if let Nmeonic::RTS = self.cur_nmeonic {
+        if let Mnemonic::RTS = self.cur_mnemonic {
             self.state = State::PullPcL;
         } else {
             self.state = State::ImplPull;
@@ -553,14 +553,14 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
     }
 
     fn impl_pull(&mut self) {
-        match self.cur_nmeonic {
-            Nmeonic::PLA => self.pla(),
-            Nmeonic::PLP => self.plp(),
-            Nmeonic::RTI => self.rti(), // Only pull the p register from stack in this function.
+        match self.cur_mnemonic {
+            Mnemonic::PLA => self.pla(),
+            Mnemonic::PLP => self.plp(),
+            Mnemonic::RTI => self.rti(), // Only pull the p register from stack in this function.
             _ => panic!("Unrecognized pull operation!"),
         }
 
-        if let Nmeonic::RTI = self.cur_nmeonic {
+        if let Mnemonic::RTI = self.cur_mnemonic {
             self.state = State::PullPcL;
         } else {
             self.state = State::FetchOpcode(NOT_FROM_BRANCH);
@@ -575,8 +575,8 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
         self.latch_u8 = self.data;
         self.pc = self.pc.wrapping_add(1);
 
-        match self.cur_nmeonic {
-            Nmeonic::JSR => self.state = State::JsrDummyStack,
+        match self.cur_mnemonic {
+            Mnemonic::JSR => self.state = State::JsrDummyStack,
             _ => self.state = State::FetchAbsHi(index_reg),
         }
     }
@@ -599,34 +599,34 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
         let hi = self.data as u16;
         self.latch_u16 = (hi << 8) | (lo as u16);
 
-        match self.cur_nmeonic {
+        match self.cur_mnemonic {
             // JMP and JSR do not have indexed absolute mode.
-            Nmeonic::JMP => {
+            Mnemonic::JMP => {
                 // Absolute JMP is only 3 cycles, there is no foruth cycle to fetch memroy from the effective address.
                 // pc is set to the effective address and state is back to fetch opcode.
                 self.jmp();
                 self.state = State::FetchOpcode(NOT_FROM_BRANCH);
             }
-            Nmeonic::JSR => {
+            Mnemonic::JSR => {
                 self.pc = self.latch_u16;
                 self.state = State::FetchOpcode(NOT_FROM_BRANCH);
             }
 
             // Read-Modify-Write instructions.
             // These instructions take 6 cycles in non indexed mode, 7 in indexed mode.
-            Nmeonic::ASL
-            | Nmeonic::DEC
-            | Nmeonic::INC
-            | Nmeonic::LSR
-            | Nmeonic::ROL
-            | Nmeonic::ROR => {
+            Mnemonic::ASL
+            | Mnemonic::DEC
+            | Mnemonic::INC
+            | Mnemonic::LSR
+            | Mnemonic::ROL
+            | Mnemonic::ROR => {
                 if let IndexReg::None = index_reg {
                     self.state = State::RmwRead; // Not in indexed mode
                 } else {
                     self.state = State::RmwIndexedExtra(boundary_crossed)
                 }
             }
-            Nmeonic::STA | Nmeonic::STX | Nmeonic::STY => {
+            Mnemonic::STA | Mnemonic::STX | Mnemonic::STY => {
                 if let IndexReg::None = index_reg {
                     self.state = State::ExecAbs;
                 } else {
@@ -656,75 +656,75 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
     }
 
     fn exec_abs(&mut self) {
-        match self.cur_nmeonic {
-            Nmeonic::ADC => {
+        match self.cur_mnemonic {
+            Mnemonic::ADC => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.latch_u8 = self.data;
                 self.adc()
             }
-            Nmeonic::AND => {
+            Mnemonic::AND => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.and()
             }
-            Nmeonic::BIT => {
+            Mnemonic::BIT => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.bit()
             }
-            Nmeonic::CMP => {
+            Mnemonic::CMP => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.cmp()
             }
-            Nmeonic::CPX => {
+            Mnemonic::CPX => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.cpx()
             }
-            Nmeonic::CPY => {
+            Mnemonic::CPY => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.cpy()
             }
-            Nmeonic::EOR => {
+            Mnemonic::EOR => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.eor()
             }
-            Nmeonic::LDA => {
+            Mnemonic::LDA => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.lda()
             }
-            Nmeonic::LDX => {
+            Mnemonic::LDX => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.ldx()
             }
-            Nmeonic::LDY => {
+            Mnemonic::LDY => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.ldy()
             }
-            Nmeonic::ORA => {
+            Mnemonic::ORA => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.ora()
             }
-            Nmeonic::SBC => {
+            Mnemonic::SBC => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
@@ -733,9 +733,9 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
             }
             // Store instruction functions perform their bus operations.
             // They perform bus write on latch_u16
-            Nmeonic::STA => self.sta(),
-            Nmeonic::STX => self.stx(),
-            Nmeonic::STY => self.sty(),
+            Mnemonic::STA => self.sta(),
+            Mnemonic::STX => self.stx(),
+            Mnemonic::STY => self.sty(),
             _ => panic!("Unimplemented nmeonic for absolute addressing mode!"),
         }
         self.state = State::FetchOpcode(NOT_FROM_BRANCH);
@@ -761,13 +761,13 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
             return;
         }
 
-        match self.cur_nmeonic {
-            Nmeonic::ASL
-            | Nmeonic::DEC
-            | Nmeonic::INC
-            | Nmeonic::LSR
-            | Nmeonic::ROL
-            | Nmeonic::ROR => {
+        match self.cur_mnemonic {
+            Mnemonic::ASL
+            | Mnemonic::DEC
+            | Mnemonic::INC
+            | Mnemonic::LSR
+            | Mnemonic::ROL
+            | Mnemonic::ROR => {
                 if let IndexReg::None = index_reg {
                     self.state = State::RmwRead;
                 } else {
@@ -785,78 +785,78 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
     }
 
     fn exec_zp(&mut self) {
-        match self.cur_nmeonic {
-            Nmeonic::STA => self.sta(),
-            Nmeonic::STX => self.stx(),
-            Nmeonic::STY => self.sty(),
-            Nmeonic::ADC => {
+        match self.cur_mnemonic {
+            Mnemonic::STA => self.sta(),
+            Mnemonic::STX => self.stx(),
+            Mnemonic::STY => self.sty(),
+            Mnemonic::ADC => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.latch_u8 = self.data;
                 self.adc()
             }
-            Nmeonic::AND => {
+            Mnemonic::AND => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.and()
             }
-            Nmeonic::BIT => {
+            Mnemonic::BIT => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.bit()
             }
-            Nmeonic::CMP => {
+            Mnemonic::CMP => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.cmp()
             }
-            Nmeonic::CPX => {
+            Mnemonic::CPX => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.cpx()
             }
-            Nmeonic::CPY => {
+            Mnemonic::CPY => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.cpy()
             }
-            Nmeonic::EOR => {
+            Mnemonic::EOR => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.eor()
             }
-            Nmeonic::LDA => {
+            Mnemonic::LDA => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.lda()
             }
-            Nmeonic::LDX => {
+            Mnemonic::LDX => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.ldx()
             }
-            Nmeonic::LDY => {
+            Mnemonic::LDY => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.ldy()
             }
-            Nmeonic::ORA => {
+            Mnemonic::ORA => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
                 self.ora()
             }
-            Nmeonic::SBC => {
+            Mnemonic::SBC => {
                 self.addr = self.latch_u16;
                 self.read = true;
                 self.access_bus();
@@ -885,13 +885,13 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
         self.latch_u8 = self.latch_u8.wrapping_add(irval);
         self.latch_u16 = self.latch_u8 as u16;
 
-        self.state = match self.cur_nmeonic {
-            Nmeonic::ASL
-            | Nmeonic::DEC
-            | Nmeonic::INC
-            | Nmeonic::LSR
-            | Nmeonic::ROL
-            | Nmeonic::ROR => State::RmwRead,
+        self.state = match self.cur_mnemonic {
+            Mnemonic::ASL
+            | Mnemonic::DEC
+            | Mnemonic::INC
+            | Mnemonic::LSR
+            | Mnemonic::ROL
+            | Mnemonic::ROR => State::RmwRead,
             _ => State::ExecZP,
         };
     }
@@ -929,13 +929,13 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
     }
 
     fn rmw_exec(&mut self) {
-        match self.cur_nmeonic {
-            Nmeonic::ASL => self.asl(),
-            Nmeonic::DEC => self.dec(),
-            Nmeonic::INC => self.inc(),
-            Nmeonic::LSR => self.lsr(),
-            Nmeonic::ROL => self.rol(),
-            Nmeonic::ROR => self.ror(),
+        match self.cur_mnemonic {
+            Mnemonic::ASL => self.asl(),
+            Mnemonic::DEC => self.dec(),
+            Mnemonic::INC => self.inc(),
+            Mnemonic::LSR => self.lsr(),
+            Mnemonic::ROL => self.rol(),
+            Mnemonic::ROR => self.ror(),
             _ => unimplemented!(),
         }
 
@@ -969,7 +969,7 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
         self.access_bus();
         self.s = self.s.wrapping_sub(1);
 
-        if let Nmeonic::BRK = self.cur_nmeonic {
+        if let Mnemonic::BRK = self.cur_mnemonic {
             self.state = State::PushP;
         } else {
             self.state = State::FetchAbsHi(IndexReg::None);
@@ -985,7 +985,7 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
 
         self.pc = (hi << 8) | lo;
 
-        if let Nmeonic::RTS = self.cur_nmeonic {
+        if let Mnemonic::RTS = self.cur_mnemonic {
             self.state = State::DummyReadPc(true);
         } else {
             self.state = State::FetchOpcode(NOT_FROM_BRANCH);
@@ -1101,7 +1101,7 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
     }
 
     fn exec_indirect(&mut self) {
-        if let Nmeonic::STA = self.cur_nmeonic {
+        if let Mnemonic::STA = self.cur_mnemonic {
             self.sta();
         } else {
             self.addr = self.latch_u16;
@@ -1110,14 +1110,14 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
 
             self.latch_u8 = self.data;
 
-            match self.cur_nmeonic {
-                Nmeonic::ADC => self.adc(),
-                Nmeonic::AND => self.and(),
-                Nmeonic::CMP => self.cmp(),
-                Nmeonic::EOR => self.eor(),
-                Nmeonic::LDA => self.lda(),
-                Nmeonic::ORA => self.ora(),
-                Nmeonic::SBC => {
+            match self.cur_mnemonic {
+                Mnemonic::ADC => self.adc(),
+                Mnemonic::AND => self.and(),
+                Mnemonic::CMP => self.cmp(),
+                Mnemonic::EOR => self.eor(),
+                Mnemonic::LDA => self.lda(),
+                Mnemonic::ORA => self.ora(),
+                Mnemonic::SBC => {
                     self.latch_u8 = self.data ^ 0xFF;
                     self.adc();
                 }
@@ -1149,7 +1149,7 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
 
         self.latch_u16 = (hi << 8) | (lo as u16);
 
-        self.state = if let Nmeonic::STA = self.cur_nmeonic {
+        self.state = if let Mnemonic::STA = self.cur_mnemonic {
             State::IndirectYDummyRead(boundary_cross)
         } else if boundary_cross {
             State::PageCrossed(true) // Pass true to go page up
