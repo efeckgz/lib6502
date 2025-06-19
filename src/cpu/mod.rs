@@ -1,7 +1,8 @@
 mod lookup;
 
-use crate::bus::{Bus, BusDevice};
 use lookup::{AddressingMode, IndexReg, LOOKUP, Mnemonic};
+
+use crate::bus::BusAdapter;
 
 const STACK_BASE: u16 = 0x0100;
 
@@ -9,7 +10,7 @@ const FROM_BRANCH: bool = true;
 const NOT_FROM_BRANCH: bool = false;
 
 // T and N are generic parameters for the Bus. T ensures the devices the cpu drives in the Bus are BusDevice objects. N is the number of devices.
-pub struct Cpu<T: BusDevice, const N: usize> {
+pub struct Cpu<T: BusAdapter> {
     // Internal state
     pub a: u8,   // Accumulator
     pub x: u8,   // Index register x
@@ -24,11 +25,10 @@ pub struct Cpu<T: BusDevice, const N: usize> {
     cur_mnemonic: Mnemonic,
 
     // Bus variables
-    // pub bus: &'a mut dyn BusDevice, // The bus itself
-    pub bus: Bus<T, N>, // The bus itself
-    pub addr: u16,      // 16 bit address bus value
-    pub data: u8,       // 8 bit data bus value
-    pub read: bool,     // bus read/write mode control variable
+    pub bus_adapter: T,
+    pub addr: u16,  // 16 bit address bus value
+    pub data: u8,   // 8 bit data bus value
+    pub read: bool, // bus read/write mode control variable
 
     // Latches to hold temporary values
     latch_u8: u8,
@@ -132,8 +132,8 @@ enum Vectors {
     BrkHi = 0xFFFF,
 }
 
-impl<T: BusDevice, const N: usize> Cpu<T, N> {
-    pub fn new(bus: Bus<T, N>) -> Self {
+impl<T: BusAdapter> Cpu<T> {
+    pub fn new(bus_adapter: T) -> Self {
         Self {
             a: 0,
             x: 0,
@@ -144,7 +144,7 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
             state: State::ResetHold, // Start the cpu at the reset state.
             cur_mode: AddressingMode::None,
             cur_mnemonic: Mnemonic::None,
-            bus,
+            bus_adapter,
             addr: 0,
             data: 0,
             read: false,
@@ -171,7 +171,7 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
         self.latch_u16 = 0;
     }
 
-    pub fn from_register_state((pc, s, a, x, y, p): RegisterState, bus: Bus<T, N>) -> Self {
+    pub fn from_register_state((pc, s, a, x, y, p): RegisterState, bus_adapter: T) -> Self {
         Self {
             a,
             x,
@@ -182,7 +182,7 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
             state: State::FetchOpcode(NOT_FROM_BRANCH),
             cur_mode: AddressingMode::None,
             cur_mnemonic: Mnemonic::None,
-            bus,
+            bus_adapter,
             addr: 0,
             data: 0,
             read: false,
@@ -1193,9 +1193,9 @@ impl<T: BusDevice, const N: usize> Cpu<T, N> {
 
     fn access_bus(&mut self) {
         if self.read {
-            self.data = self.bus.read(self.addr);
+            self.data = self.bus_adapter.read(self.addr);
         } else {
-            self.bus.write(self.addr, self.data);
+            self.bus_adapter.write(self.addr, self.data);
         }
     }
 

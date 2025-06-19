@@ -2,9 +2,12 @@ mod utils;
 
 use std::path::PathBuf;
 
-use lib6502::bus::{Bus, BusDevice};
 use lib6502::cpu::Cpu;
-use utils::{Devices, Ram, State, TESTS_DIR, Test};
+use utils::{State, TESTS_DIR, Test};
+
+use crate::framework::utils::Bus;
+
+use lib6502::bus::BusAdapter;
 
 pub fn run_tests(opcode: &str) {
     let tests = load_tests(opcode);
@@ -26,15 +29,9 @@ fn run_single_test(t: Test) {
     let init = &t.initial_state;
     let final_state = t.final_state;
 
-    let mut bus: Bus<Devices, 1> = Bus::new();
+    let bus = Bus::from_initial_state(init);
 
-    let mut _ram = Ram::new();
-    _ram.load_from_state(init.clone());
-
-    let ram_device = Devices::Ram(_ram);
-    bus.map_device(0x0000, 0xFFFF, ram_device, 1).unwrap();
-
-    let mut cpu = Cpu::from_register_state(init.to_registers(), bus);
+    let mut cpu: Cpu<Bus> = Cpu::from_register_state(init.to_registers(), bus);
 
     let mut i = 1;
     print!("\tCyles: ");
@@ -52,12 +49,15 @@ fn run_single_test(t: Test) {
         i += 1;
     }
 
-    let final_cpu = State::new(cpu.get_state(), get_final_mem(&mut cpu.bus, &final_state));
+    let final_cpu = State::new(
+        cpu.get_state(),
+        get_final_mem(&mut cpu.bus_adapter, &final_state),
+    );
     assert_eq!(final_cpu, final_state);
     println!("\t{}", text_green("PASS!"));
 }
 
-fn get_final_mem(bus: &mut Bus<Devices, 1>, st: &State) -> Vec<(u16, u8)> {
+fn get_final_mem(bus: &mut Bus, st: &State) -> Vec<(u16, u8)> {
     let mut result = vec![];
     for (addr, _) in st.clone().ram {
         result.push((addr, bus.read(addr)));

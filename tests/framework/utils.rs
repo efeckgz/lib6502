@@ -1,10 +1,6 @@
-use lib6502::{bus::BusDevice, cpu::RegisterState};
-
+use lib6502::{bus::BusAdapter, cpu::RegisterState};
 use serde::{Deserialize, Serialize};
-
 pub const TESTS_DIR: &str = "./65x02/nes6502/v1";
-
-const RAM_SIZE: usize = 65536;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Test {
@@ -30,28 +26,62 @@ pub struct State {
     pub ram: Vec<(u16, u8)>,
 }
 
-#[derive(Clone)]
-pub struct Ram {
-    pub bytes: [u8; RAM_SIZE],
+pub struct Bus {
+    pub addresses: Vec<(u16, u8)>,
 }
 
-pub enum Devices {
-    Ram(Ram),
-}
-
-impl BusDevice for Devices {
-    fn read(&mut self, addr: u16) -> u8 {
-        match self {
-            Devices::Ram(ram) => ram.read(addr),
+impl Bus {
+    pub fn from_initial_state(st: &State) -> Self {
+        Self {
+            addresses: st.ram.clone(),
         }
+    }
+}
+
+impl BusAdapter for Bus {
+    fn read(&mut self, addr: u16) -> u8 {
+        for (_addr, data) in &self.addresses {
+            if *_addr == addr {
+                return *data;
+            }
+        }
+
+        0
     }
 
     fn write(&mut self, addr: u16, data: u8) {
-        match self {
-            Devices::Ram(ram) => ram.write(addr, data),
+        for (_addr, _data) in &mut self.addresses {
+            if *_addr == addr {
+                *_data = data;
+                return;
+            }
         }
+        self.addresses.push((addr, data));
     }
 }
+
+// #[derive(Clone)]
+// pub struct Ram {
+//     pub bytes: [u8; RAM_SIZE],
+// }
+
+// pub enum Devices {
+//     Ram(Ram),
+// }
+
+// impl BusDevice for Devices {
+//     fn read(&mut self, addr: u16) -> u8 {
+//         match self {
+//             Devices::Ram(ram) => ram.read(addr),
+//         }
+//     }
+
+//     fn write(&mut self, addr: u16, data: u8) {
+//         match self {
+//             Devices::Ram(ram) => ram.write(addr, data),
+//         }
+//     }
+// }
 
 impl State {
     pub fn new((pc, s, a, x, y, p): RegisterState, ram: Vec<(u16, u8)>) -> Self {
@@ -71,26 +101,26 @@ impl State {
     }
 }
 
-impl Ram {
-    pub fn new() -> Self {
-        Self {
-            bytes: [0_u8; RAM_SIZE],
-        }
-    }
+// impl Ram {
+//     pub fn new() -> Self {
+//         Self {
+//             bytes: [0_u8; RAM_SIZE],
+//         }
+//     }
 
-    pub fn load_from_state(&mut self, st: State) {
-        for (addr, byte) in st.ram {
-            self.write(addr, byte);
-        }
-    }
-}
+//     pub fn load_from_state(&mut self, st: State) {
+//         for (addr, byte) in st.ram {
+//             self.write(addr, byte);
+//         }
+//     }
+// }
 
-impl BusDevice for Ram {
-    fn read(&mut self, addr: u16) -> u8 {
-        self.bytes[addr as usize]
-    }
+// impl BusDevice for Ram {
+//     fn read(&mut self, addr: u16) -> u8 {
+//         self.bytes[addr as usize]
+//     }
 
-    fn write(&mut self, addr: u16, data: u8) {
-        self.bytes[addr as usize] = data;
-    }
-}
+//     fn write(&mut self, addr: u16, data: u8) {
+//         self.bytes[addr as usize] = data;
+//     }
+// }
