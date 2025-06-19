@@ -60,29 +60,6 @@ impl BusAdapter for Bus {
     }
 }
 
-// #[derive(Clone)]
-// pub struct Ram {
-//     pub bytes: [u8; RAM_SIZE],
-// }
-
-// pub enum Devices {
-//     Ram(Ram),
-// }
-
-// impl BusDevice for Devices {
-//     fn read(&mut self, addr: u16) -> u8 {
-//         match self {
-//             Devices::Ram(ram) => ram.read(addr),
-//         }
-//     }
-
-//     fn write(&mut self, addr: u16, data: u8) {
-//         match self {
-//             Devices::Ram(ram) => ram.write(addr, data),
-//         }
-//     }
-// }
-
 impl State {
     pub fn new((pc, s, a, x, y, p): RegisterState, ram: Vec<(u16, u8)>) -> Self {
         Self {
@@ -100,27 +77,3 @@ impl State {
         (self.pc, self.s, self.a, self.x, self.y, self.p)
     }
 }
-
-// impl Ram {
-//     pub fn new() -> Self {
-//         Self {
-//             bytes: [0_u8; RAM_SIZE],
-//         }
-//     }
-
-//     pub fn load_from_state(&mut self, st: State) {
-//         for (addr, byte) in st.ram {
-//             self.write(addr, byte);
-//         }
-//     }
-// }
-
-// impl BusDevice for Ram {
-//     fn read(&mut self, addr: u16) -> u8 {
-//         self.bytes[addr as usize]
-//     }
-
-//     fn write(&mut self, addr: u16, data: u8) {
-//         self.bytes[addr as usize] = data;
-//     }
-// }
