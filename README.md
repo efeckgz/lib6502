@@ -8,6 +8,8 @@ The goal of this library is to be used as a working CPU for builidng an emulator
 
 The main part of the `Cpu` is the `cycle` function. When called, this function executes 1 cpu cycle. Calling this function in a loop achieves a working Cpu. The `instruction_step` function can be used to execute 1 instruction. This function calls `cycle` until the current instruction is finished. The cpu is configured to emulate the 7 cycle initialization sequence. This means creating a new cpu with `Cpu::new()` will not have the correct PC value until after calling `cycle` 7 times. Calling `cpu.start_sequence()` runs 7 cycles to make this easier.
 
+The library is currently not published on crates.io. If you wish to use it, you must clone this repository to your computer and add a local dependency to your `Cargo.toml` file.
+
 ## Features
 
 - [X] Dependency free & `no_std` support in release builds (Uses serde to parse json tests in dev builds)
@@ -16,7 +18,7 @@ The main part of the `Cpu` is the `cycle` function. When called, this function e
 - [ ] Illegal opcodes
 - [ ] All 6502 variants (Currently only NES variant is added)
 - [ ] Proper error handling (Currently calls `panic!` on undefined state)
-- [ ] Proper library documentation 
+- [ ] Proper library documentation
 
 ## Testing
 
