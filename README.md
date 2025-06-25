@@ -1,6 +1,22 @@
 # lib6502
 
-lib6502 is a Rust crate that provides a cycle-accurate emulator for the Mos Technology 6502 microprocessor. This library is currently a work in progress.
+lib6502 is a Rust crate that provides a cycle-accurate emulator for the Mos Technology 6502 microprocessor. The core emulator is complete, but there are many improvements to be done.
+
+## Usage
+
+The goal of this library is to be used as a working CPU for builidng an emulator for a 6502 based system. To achieve this, it exposes a trait `BusAdapter`. Implementors should build the Bus made up of different devices depending on the specific system being emulated. The Bus can then implement this trait and passed to `Cpu`.
+
+The main part of the `Cpu` is the `cycle` function. When called, this function executes 1 cpu cycle. Calling this function in a loop achieves a working Cpu. The `instruction_step` function can be used to execute 1 instruction. This function calls `cycle` until the current instruction is finished. The cpu is configured to emulate the 7 cycle initialization sequence. This means creating a new cpu with `Cpu::new()` will not have the correct PC value until after calling `cycle` 7 times. Calling `cpu.start_sequence()` runs 7 cycles to make this easier.
+
+## Features
+
+- [X] `no_std` support
+- [X] Cycle accuracy
+- [X] All legal opcodes
+- [ ] Illegal opcodes
+- [ ] All 6502 variants (Currently only NES variant is added)
+- [ ] Proper error handling (Currently calls `panic!` on undefined state)
+- [ ] Proper library documentation 
 
 ## Testing
 
