@@ -10,7 +10,7 @@ The main part of the `Cpu` is the `cycle` function. When called, this function e
 
 ## Features
 
-- [X] `no_std` support
+- [X] Dependency free & `no_std` support in release builds (Uses serde to parse json tests in dev builds)
 - [X] Cycle accuracy
 - [X] All legal opcodes
 - [ ] Illegal opcodes
