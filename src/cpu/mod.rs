@@ -251,6 +251,12 @@ impl<T: BusAdapter> Cpu<T> {
         }
     }
 
+    // Run a cpu cycle, then execute a callback function.
+    pub fn cycle_and_then<F: Fn(&Cpu<T>)>(&mut self, callback: F) {
+        self.cycle();
+        callback(self);
+    }
+
     // Step the cpu forward 1 instruction
     pub fn instruction_step(&mut self) {
         self.cycle();
