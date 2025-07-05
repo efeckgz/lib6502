@@ -31,7 +31,8 @@ fn run_single_test(t: Test) {
 
     let bus = Bus::from_initial_state(init);
 
-    let mut cpu: Cpu<Bus> = Cpu::from_register_state(init.to_registers(), bus);
+    let mut cpu: Cpu<Bus> =
+        Cpu::from_register_state(init.to_registers(), bus, lib6502::cpu::Variant::Mos);
 
     let mut i = 1;
     print!("\tCyles: ");

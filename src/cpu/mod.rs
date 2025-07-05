@@ -30,9 +30,19 @@ pub struct Cpu<T: BusAdapter> {
     pub data: u8,   // 8 bit data bus value
     pub read: bool, // bus read/write mode control variable
 
+    variant: Variant,
+
     // Latches to hold temporary values
     latch_u8: u8,
     latch_u16: u16,
+}
+
+pub enum Variant {
+    Mos,      // Original MOS variant
+    Nes,      // Variant used in NES
+    Rockwell, // Rockwell 65c02
+    Synertek, // Synertek 65c02
+    Wdc,      // WDC 65c02
 }
 
 // Status flags. Used in the processor status register p.
@@ -133,7 +143,7 @@ enum Vectors {
 }
 
 impl<T: BusAdapter> Cpu<T> {
-    pub fn new(bus_adapter: T) -> Self {
+    pub fn new(bus_adapter: T, variant: Variant) -> Self {
         Self {
             a: 0,
             x: 0,
@@ -148,6 +158,7 @@ impl<T: BusAdapter> Cpu<T> {
             addr: 0,
             data: 0,
             read: false,
+            variant,
             latch_u8: 0,
             latch_u16: 0,
         }
@@ -171,7 +182,11 @@ impl<T: BusAdapter> Cpu<T> {
         self.latch_u16 = 0;
     }
 
-    pub fn from_register_state((pc, s, a, x, y, p): RegisterState, bus_adapter: T) -> Self {
+    pub fn from_register_state(
+        (pc, s, a, x, y, p): RegisterState,
+        bus_adapter: T,
+        variant: Variant,
+    ) -> Self {
         Self {
             a,
             x,
@@ -186,6 +201,7 @@ impl<T: BusAdapter> Cpu<T> {
             addr: 0,
             data: 0,
             read: false,
+            variant,
             latch_u8: 0,
             latch_u16: 0,
         }
