@@ -37,6 +37,7 @@ pub struct Cpu<T: BusAdapter> {
     latch_u16: u16,
 }
 
+#[derive(PartialEq, Eq)]
 pub enum Variant {
     Mos,      // Original MOS variant
     Nes,      // Variant used in NES
@@ -1240,12 +1241,20 @@ impl<T: BusAdapter> Cpu<T> {
         let a_prev = self.a;
         let val = self.latch_u8;
 
-        let (mut res, mut of) = a_prev.overflowing_add(val);
-        if self.flag_set(Flags::Carry) {
-            let (fin, of2) = res.overflowing_add(1);
-            res = fin;
-            of = of || of2;
-        }
+        let bcd = self.flag_set(Flags::Decimal) && self.variant == Variant::Mos;
+
+        let (res, of) = if bcd {
+            todo!("Handle BCD mode!")
+        } else {
+            let (mut res, mut of) = a_prev.overflowing_add(val);
+            if self.flag_set(Flags::Carry) {
+                let (fin, of2) = res.overflowing_add(1);
+                res = fin;
+                of = of || of2;
+            }
+
+            (res, of)
+        };
 
         self.a = res;
 
