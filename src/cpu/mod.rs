@@ -1242,26 +1242,65 @@ impl<T: BusAdapter> Cpu<T> {
         let val = self.latch_u8;
 
         let bcd = self.flag_set(Flags::Decimal) && self.variant == Variant::Mos;
+        let cin = self.flag_set(Flags::Carry) as u8;
 
-        let (res, of) = if bcd {
-            todo!("Handle BCD mode!")
-        } else {
-            let (mut res, mut of) = a_prev.overflowing_add(val);
-            if self.flag_set(Flags::Carry) {
-                let (fin, of2) = res.overflowing_add(1);
-                res = fin;
-                of = of || of2;
+        let (mut bin_result, mut did_overflow) = a_prev.overflowing_add(val);
+        (bin_result, did_overflow) = bin_result.overflowing_add(cin);
+
+        self.a = if bcd {
+            // todo!("Handle BCD mode!");
+            if bin_result & 0x0F > 0x09 {
+                bin_result = bin_result.wrapping_add(0x06);
             }
 
-            (res, of)
+            let carry = bin_result > 0x99;
+            if carry {
+                bin_result = bin_result.wrapping_add(0x60);
+            }
+
+            self.set_flag(Flags::Carry, carry);
+
+            bin_result
+        } else {
+            todo!("Handle binary mode!");
         };
 
-        self.a = res;
+        // let (res, of) = if bcd {
+        //     // todo!("Handle BCD mode!")
+        //     let (mut res, mut of) = a_prev.overflowing_add(val);
+        //     if self.flag_set(Flags::Carry) {
+        //         // res = res.wrapping_add(1);
+        //         (res, of) = res.overflowing_add(1);
+        //     }
 
-        self.set_flag(Flags::Carry, of);
-        self.set_flag(Flags::Zero, res == 0);
-        self.set_flag(Flags::Negative, (res & 0x80) != 0);
-        self.set_flag(Flags::Overflow, ((a_prev ^ res) & (val ^ res) & 0x80) != 0);
+        //     if res & 0x0F > 0x09 {
+        //         res = res.wrapping_add(0x06);
+        //         // of = true;
+        //     }
+
+        //     if res & 0xF0 > 0x90 {
+        //         res = res.wrapping_add(0x60);
+        //         of = true;
+        //     }
+
+        //     (res, of)
+        // } else {
+        //     let (mut res, mut of) = a_prev.overflowing_add(val);
+        //     if self.flag_set(Flags::Carry) {
+        //         let (fin, of2) = res.overflowing_add(1);
+        //         res = fin;
+        //         of = of || of2;
+        //     }
+
+        //     (res, of)
+        // };
+
+        // self.a = res;
+
+        // self.set_flag(Flags::Carry, of);
+        // self.set_flag(Flags::Zero, res == 0);
+        // self.set_flag(Flags::Negative, (res & 0x80) != 0);
+        // self.set_flag(Flags::Overflow, ((a_prev ^ res) & (val ^ res) & 0x80) != 0);
     }
 
     fn and(&mut self) {

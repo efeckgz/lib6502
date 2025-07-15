@@ -1,6 +1,6 @@
 use lib6502::{bus::BusAdapter, cpu::RegisterState};
 use serde::{Deserialize, Serialize};
-pub const TESTS_DIR: &str = "./65x02/nes6502/v1";
+pub const TESTS_DIR: &str = "./65x02/6502/v1";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Test {
