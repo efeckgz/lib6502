@@ -1,4 +1,6 @@
-use lib6502::{bus::BusAdapter, cpu::RegisterState};
+use std::fmt::{format, write};
+
+use lib6502::{bus::BusAdapter, cpu::Flags, cpu::RegisterState};
 use serde::{Deserialize, Serialize};
 pub const TESTS_DIR: &str = "./65x02/6502/v1";
 
@@ -15,7 +17,7 @@ pub struct Test {
     pub cycles: Vec<(u16, u8, String)>, // address, value, read/write
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct State {
     pub pc: u16,
     pub s: u8,
@@ -75,5 +77,36 @@ impl State {
 
     pub fn to_registers(&self) -> RegisterState {
         (self.pc, self.s, self.a, self.x, self.y, self.p)
+    }
+
+    fn flag_set(&self, flag: Flags) -> bool {
+        (self.p & (1 << flag as u8)) != 0
+    }
+}
+
+impl core::fmt::Debug for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let carry = if self.flag_set(Flags::Carry) { 1 } else { 0 };
+        let zero = if self.flag_set(Flags::Zero) { 1 } else { 0 };
+        let interrupt_disable = if self.flag_set(Flags::InterrputDisable) {
+            1
+        } else {
+            0
+        };
+        let decimal = if self.flag_set(Flags::Decimal) { 1 } else { 0 };
+        let brk = if self.flag_set(Flags::Break) { 1 } else { 0 };
+        let overflow = if self.flag_set(Flags::Overflow) { 1 } else { 0 };
+        let negative = if self.flag_set(Flags::Negative) { 1 } else { 0 };
+
+        let flags_string = format!(
+            "Carry: {} Zero: {} Interrupt Disable: {} Decimal: {} Break: {} Overflow: {} Negative: {}",
+            carry, zero, interrupt_disable, decimal, brk, overflow, negative
+        );
+
+        write!(
+            f,
+            "PC: {} S: {} A: {} X: {} Y: {} {} Ram: {:?}",
+            self.pc, self.s, self.a, self.x, self.y, flags_string, self.ram
+        )
     }
 }
